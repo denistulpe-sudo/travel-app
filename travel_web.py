@@ -2,11 +2,12 @@ import streamlit as st
 import requests
 import json
 import time
+from datetime import datetime
 
 # --- PAGE SETUP ---
 st.set_page_config(page_title="Travel Formatter", page_icon="✈️", layout="centered")
 st.title("✈️ Travel Logistics Converter")
-st.caption("Auto-detects the best Google Model for your Key.")
+st.caption("Auto-detects model • Smart Year Logic")
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -15,14 +16,13 @@ with st.sidebar:
     st.info("If errors persist, create a NEW key at aistudio.google.com")
 
 # --- INPUT ---
-raw_text = st.text_area("Paste messy email/text here:", height=200, placeholder="Example: 26/03/26 18 pax Kaunas to Vilnius...")
+raw_text = st.text_area("Paste messy email/text here:", height=200, placeholder="Example: 5th Feb 18 pax Kaunas to Vilnius...")
 
 # --- FUNCTIONS ---
 def find_working_model(api_key):
     """Asks Google which models are available."""
     url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
     try:
-        # INCREASED TIMEOUT TO 30 SECONDS
         response = requests.get(url, timeout=30)
         if response.status_code == 200:
             data = response.json()
@@ -36,20 +36,23 @@ def find_working_model(api_key):
 def call_google_ai_auto(api_key, text):
     # 1. FIND MODEL
     model_name = find_working_model(api_key)
-    
-    if not model_name:
-        model_name = "models/gemini-pro"
-    
-    if not model_name.startswith("models/"):
-        model_name = f"models/{model_name}"
+    if not model_name: model_name = "models/gemini-pro"
+    if not model_name.startswith("models/"): model_name = f"models/{model_name}"
 
-    # 2. SEND REQUEST
+    # 2. GET CURRENT YEAR
+    current_year = datetime.now().year
+
+    # 3. SEND REQUEST
     url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     
     prompt = f"""
     You are a travel logistics assistant.
     Task: Convert text into a strict "Pick-up / Drop-off" manifest.
+
+    --- CONTEXT ---
+    Current Year: {current_year}
+    If the year is missing in the input text, ASSUME it is {current_year}.
 
     --- RULES ---
     1. HEADER: [DD.MM.YYYY], [Pax] pax, [Start City]
@@ -79,7 +82,6 @@ def call_google_ai_auto(api_key, text):
     data = {"contents": [{"parts": [{"text": prompt}]}]}
     
     try:
-        # INCREASED TIMEOUT TO 60 SECONDS (This is the fix!)
         response = requests.post(url, headers=headers, json=data, timeout=60)
         
         if response.status_code == 200:
@@ -103,7 +105,7 @@ if st.button("Convert Format", type="primary"):
     elif not raw_text:
         st.warning("Please enter text.")
     else:
-        with st.spinner("Finding best model & converting (might take 20s)..."):
+        with st.spinner("Finding best model & converting..."):
             status, result, used_model = call_google_ai_auto(api_key, raw_text)
             
             if status == "SUCCESS":
