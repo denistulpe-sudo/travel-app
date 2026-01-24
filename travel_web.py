@@ -2,77 +2,114 @@ import streamlit as st
 import requests
 import json
 
-# --- PAGE SETUP ---
+# --- LAPAS KONFIGURĀCIJA ---
 st.set_page_config(page_title="Travel Formatter", page_icon="✈️", layout="centered")
 st.title("✈️ Travel Logistics Converter")
+st.caption("Auto-detects the best Google Model for your Key.")
 
-# --- SIDEBAR ---
+# --- SĀNU JOSLA ---
 with st.sidebar:
     st.header("Settings")
     api_key = st.text_input("Google API Key", type="password", help="Paste your AIza... key here")
-    st.info("If it fails, create a NEW key at aistudio.google.com")
+    st.info("If errors persist, create a NEW key at aistudio.google.com")
 
-# --- INPUT ---
-raw_text = st.text_area("Paste text here:", height=150)
+# --- IEVADE ---
+raw_text = st.text_area("Paste messy email/text here:", height=200, placeholder="Example: 26/03/26 18 pax Kaunas to Vilnius...")
 
-# --- DEBUGGING FUNCTION ---
-def call_google_ai_debug(api_key, text):
-    # We will try the standard model first
-    model = "gemini-1.5-flash"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+# --- FUNKCIJAS ---
+def find_working_model(api_key):
+    """Jautā Google, kādi modeļi ir pieejami šai atslēgai."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            # Meklējam pirmo modeli, kas ir 'gemini' un atbalsta teksta ģenerēšanu
+            for model in data.get('models', []):
+                if 'generateContent' in model.get('supportedGenerationMethods', []) and 'gemini' in model['name']:
+                    return model['name'] # Atgriežam, piemēram, "models/gemini-pro"
+        return None
+    except:
+        return None
+
+def call_google_ai_auto(api_key, text):
+    # 1. SOLIS: Atrodam pareizo modeli
+    model_name = find_working_model(api_key)
+    
+    if not model_name:
+        # Ja nevar atrast automātiski, mēģinām 'gemini-pro' kā pēdējo cerību
+        model_name = "models/gemini-pro"
+    
+    # Pārliecināmies, ka formāts ir pareizs
+    if not model_name.startswith("models/"):
+        model_name = f"models/{model_name}"
+
+    # 2. SOLIS: Sūtam pieprasījumu
+    url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     
     prompt = f"""
+    You are a travel logistics assistant.
     Task: Convert text into a strict "Pick-up / Drop-off" manifest.
+
     --- RULES ---
-    1. HEADER: [DD.MM.YYYY], [Pax] pax, [Start City] (No times in header)
-    2. FORMAT:
-       - Pick-up [HH:MM] [Location] ([Flight])
-       - Drop-off [Location] ([Flight])
-       *[Notes/Luggage]
-    3. CLEANUP: No bold text (**). 24h format.
-    --- INPUT ---
+    1. HEADER: [DD.MM.YYYY], [Pax] pax, [Start City]
+       - Do NOT put times in the header.
+    
+    2. IF DETAILS ARE KNOWN (Specific Hotels/Times):
+       - Line 1: "- Pick-up [HH:MM] [Location] ([Flight Info])"
+       - Line 2: "- Drop-off [Location] ([Flight Info])"
+       - Line 3: "*[Luggage info or Notes]"
+       
+       *Note: If specific pickup time is missing, just write "- Pick-up [Location]".*
+       *Note: Put Flight Arrival/Departure info inside parenthesis at the end of the line.*
+
+    3. IF DETAILS ARE UNKNOWN (Vague request):
+       - Just write "Addresses, Times: TBC" under the header.
+       - Then list the cities with hyphens.
+
+    4. CLEANUP:
+       - No bold text (**). 
+       - Convert 12h times to 24h (21:45).
+       - Group strictly by date.
+
+    --- INPUT TEXT ---
     {text}
     """
     
     data = {"contents": [{"parts": [{"text": prompt}]}]}
     
     try:
-        # Send request
         response = requests.post(url, headers=headers, json=data, timeout=10)
         
-        # IF SUCCESS (200 OK)
         if response.status_code == 200:
             result = response.json()
             if 'candidates' in result:
-                return "SUCCESS", result['candidates'][0]['content']['parts'][0]['text']
+                clean_text = result['candidates'][0]['content']['parts'][0]['text']
+                # Tīrīšana un modeļa info pievienošana
+                clean_text = clean_text.replace("**", "").replace("##", "")
+                return "SUCCESS", clean_text, model_name
             else:
-                return "ERROR", f"Google blocked the content. Raw response: {result}"
-        
-        # IF FAIL (400, 403, 404, 500)
+                return "ERROR", f"Blocked response. Raw: {result}", model_name
         else:
-            return "ERROR", f"Google Error Code: {response.status_code}\nMessage: {response.text}"
+            return "ERROR", f"Google Error {response.status_code}: {response.text}", model_name
 
     except Exception as e:
-        return "ERROR", f"Connection Failed: {str(e)}"
+        return "ERROR", f"Connection Failed: {str(e)}", "Unknown"
 
-# --- BUTTON ---
+# --- INTERFEISS ---
 if st.button("Convert Format", type="primary"):
     if not api_key:
         st.error("Please enter your API Key!")
     elif not raw_text:
         st.warning("Please enter text.")
     else:
-        with st.spinner("Connecting to Google..."):
-            status, result = call_google_ai_debug(api_key, raw_text)
+        with st.spinner("Finding best model & converting..."):
+            status, result, used_model = call_google_ai_auto(api_key, raw_text)
             
             if status == "SUCCESS":
-                st.success("Done!")
-                # Clean bold text just in case
-                clean_result = result.replace("**", "").replace("##", "")
-                st.text_area("Result:", value=clean_result, height=300)
+                st.success(f"Success! (Used model: {used_model})")
+                st.text_area("Result:", value=result, height=350)
             else:
-                # SHOW THE REAL ERROR
-                st.error("Something went wrong!")
+                st.error(f"Failed using model: {used_model}")
                 st.code(result, language="json")
-                st.warning("Please copy the error message above and send it to me.")
