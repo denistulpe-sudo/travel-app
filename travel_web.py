@@ -10,7 +10,7 @@ st.set_page_config(page_title="Travel Formatter Pro", page_icon="🚐", layout="
 with st.sidebar:
     st.header("Settings")
     api_key = st.text_input("Google API Key", type="password")
-    st.info(f"Current Year: {datetime.now().year}")
+    st.info(f"Today's Date: {datetime.now().strftime('%d.%m.%Y')}")
     st.divider()
 
 # --- FUNCTIONS ---
@@ -37,36 +37,23 @@ def call_google_ai(api_key, text):
     
     current_year = datetime.now().year
     
-    # --- UPDATED LOGIC PROMPT ---
+    # --- UPDATED "SKEPTICAL" PROMPT ---
     prompt = f"""
     Task: Convert travel text into a vertical logistics manifest.
     Year: {current_year}. 
 
-    --- STRIKTIE NOTEIKUMI (STRICT RULES) ---
-    1. FLIGHT INFO LOCATION: Flight info (Arrival/Departure) MUST only be placed on the line that mentions the AIRPORT. 
-       - If picking up from Airport: "- Pick-up [Time] [Airport Name] (Flight arrival [Time])"
-       - If dropping off at Airport: "- Drop-off [Airport Name] (Flight departure [Time])"
-       - NEVER put flight info on the Hotel/City address line.
+    --- CRITICAL SAFETY RULES (ANTI-GUESSING) ---
+    1. DATE: If the month is not explicitly mentioned (e.g., "Monday the 13th"), do NOT guess the month. Use ".MM." or "TBC" for the month (e.g., 13.MM.{current_year}).
+    2. PAX: Do NOT assume the number of passengers based on the vehicle requested. If the email asks for "8-seat minivan prices," but doesn't say "we are 8 people," set Pax to "TBC".
+    3. VEHICLE OPTIONS: If the client is asking for multiple pricing options, list them under the * bullet point at the bottom.
+    4. NO CALCULATIONS: Use the times exactly as written.
 
-    2. DUPLICATION: Create a separate Pick-up/Drop-off block for every unique service time or flight.
-    
-    3. VERTICALITY: 
-       - Header on its own line.
-       - Pick-up on its own line.
-       - Drop-off on its own line.
-       - Luggage/Notes on its own line (starting with *).
-    
-    4. HEADER: [DD.MM.YYYY], [Pax] pax, [Start City]
-    
-    5. NO BOLD: Do not use ** symbols.
-    
-    6. SPACING: Double blank line between different dates.
-
-    --- EXPECTED FORMAT ---
-    26.03.2026, 18 pax, Kaunas
-    - Pick-up 21:45 Kaunas Airport (Flight arrival 21:15)
-    - Drop-off Domus Maria Hotel, Vilnius
-    *Small hand luggage only
+    --- FORMAT RULES ---
+    - Header: [DD.MM.YYYY], [Pax] pax, [Start City]
+    - Lines: Every Pick-up and Drop-off on its own NEW line.
+    - Notes: Every note or vehicle request on its own line starting with *.
+    - Spacing: Double blank line between different dates.
+    - No Bold: Do not use **.
 
     --- INPUT ---
     {text}
@@ -87,7 +74,6 @@ def clear_text_area():
 
 # --- UI ---
 st.title("🚐 Travel Route Formatter")
-
 raw_text = st.text_area("Paste email here:", height=300, key="main_input")
 
 col1, col2 = st.columns([1, 4])
@@ -100,10 +86,10 @@ if process_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Correcting flight logic and formatting..."):
+        with st.spinner("Analyzing data (strictly)..."):
             status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
-                st.success("Manifest generated correctly!")
+                st.success("Manifest generated (No assumptions made)!")
                 st.code(result, language=None)
             else:
                 st.error("Failed.")
