@@ -10,6 +10,8 @@ st.set_page_config(page_title="Inquiry Auditor Pro", page_icon="🔍", layout="c
 with st.sidebar:
     st.header("Settings")
     api_key = st.text_input("Google API Key", type="password")
+    # We calculate the year here to pass it to the prompt
+    current_year = datetime.now().year
     st.info(f"Today is: {datetime.now().strftime('%A, %d.%m.%Y')}")
     st.divider()
 
@@ -34,33 +36,39 @@ def audit_email(api_key, text):
 
     url = f"https://generativelanguage.googleapis.com/{api_version}/{model_path}:generateContent?key={api_key}"
     
-    current_date = datetime.now().strftime('%A, %d.%m.%Y')
+    current_date_str = datetime.now().strftime('%A, %d.%m.%Y')
+    current_year_str = str(datetime.now().year)
     
-    # --- COLOR-CODED PROMPT ---
+    # --- PROMPT WITH YEAR ASSUMPTION ---
     prompt = f"""
     You are a professional travel auditor. Analyze this email.
-    Today's Date: {current_date}.
+    Today's Date: {current_date_str}.
 
-    --- 8 REQUIREMENTS ---
-    1. Dates/Times (Must include Month/Year).
-    2. Pax Count (Must be specific number of people, not vehicle seats).
-    3. Locations (Pick-up/Drop-off).
-    4. Vehicle Type.
-    5. Luggage.
-    6. Duration.
-    7. Extras (Guide/Stops).
-    8. Driver Meals/Accom.
+    --- ANALYSIS RULES ---
+    1. DATES: 
+       - If the Month is missing (e.g., "Monday the 13th"): Mark as :red[❌ Dates: Missing Month].
+       - If the Year is missing but Day/Month are present (e.g., "15th August"): ASSUME {current_year_str}. Mark as :green[✅ Dates: [Date] (Assumed {current_year_str})].
+    
+    2. PAX COUNT: 
+       - Must be a specific number of people. 
+       - If client only asks for vehicle price (e.g., "price for 8-seater") without saying "we are 8 people": Mark as :red[❌ Pax: Not specified].
+    
+    3. LOCATIONS: Specific cities or hotels required.
+    4. VEHICLE: Preferred type.
+    5. LUGGAGE: Amount/Type.
+    6. DURATION: Hours/Days.
+    7. EXTRAS: Guide/Stops.
+    8. DRIVER: Meals/Accom.
 
-    --- FORMATTING INSTRUCTIONS ---
+    --- OUTPUT FORMAT ---
     1. PART 1: "📊 Analysis"
-       - Go through the 8 points.
-       - If a point is MET, write it like this: :green[✅ **[Requirement Name]**: [Details found]]
-       - If a point is MISSING or VAGUE (like missing month or pax), write it like this: :red[❌ **[Requirement Name]**: [What is missing]]
+       - Use :green[✅ **[Requirement]**: [Details]] for met requirements.
+       - Use :red[❌ **[Requirement]**: [Issue]] for missing items.
        - Put every point on a new line.
 
     2. PART 2: "✉️ Draft Reply"
-       - Write a polite professional email asking ONLY for the items marked with ❌.
-       - Use standard phrases: "Could you please provide an exact itinerary...", "As soon as I have all the information..."
+       - Write a polite email asking ONLY for the items marked with ❌.
+       - If everything is Green, draft a quote confirmation saying you will calculate the price shortly.
 
     --- EMAIL TO AUDIT ---
     {text}
@@ -101,7 +109,6 @@ if audit_btn:
             status, result = audit_email(api_key, st.session_state["audit_input"])
             if status == "SUCCESS":
                 st.success("Analysis Complete")
-                # Using st.markdown allows the colors to render correctly
                 st.markdown(result)
             else:
                 st.error("Audit failed.")
