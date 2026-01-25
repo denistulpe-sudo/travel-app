@@ -7,96 +7,58 @@ from datetime import datetime
 # --- PAGE SETUP ---
 st.set_page_config(page_title="Travel Formatter", page_icon="✈️", layout="centered")
 st.title("✈️ Travel Logistics Converter")
-st.caption("Auto-detects model • Smart Year Logic")
 
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("Settings")
-    api_key = st.text_input("Google API Key", type="password", help="Paste your AIza... key here")
-    st.info("If errors persist, create a NEW key at aistudio.google.com")
+    api_key = st.text_input("Google API Key", type="password")
+    st.info(f"Current Year: {datetime.now().year}")
 
 # --- INPUT ---
-raw_text = st.text_area("Paste messy email/text here:", height=200, placeholder="Example: 5th Feb 18 pax Kaunas to Vilnius...")
+raw_text = st.text_area("Paste messy email/text here:", height=200)
 
 # --- FUNCTIONS ---
-def find_working_model(api_key):
-    """Asks Google which models are available."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
-    try:
-        response = requests.get(url, timeout=30)
-        if response.status_code == 200:
-            data = response.json()
-            for model in data.get('models', []):
-                if 'generateContent' in model.get('supportedGenerationMethods', []) and 'gemini' in model['name']:
-                    return model['name']
-        return None
-    except:
-        return None
-
-def call_google_ai_auto(api_key, text):
-    # 1. FIND MODEL
-    model_name = find_working_model(api_key)
-    if not model_name: model_name = "models/gemini-pro"
-    if not model_name.startswith("models/"): model_name = f"models/{model_name}"
-
-    # 2. GET CURRENT YEAR
+def call_google_ai_stable(api_key, text):
+    # Mēs mēģināsim šos trīs modeļus pēc kārtas. 
+    # Ja pirmais neiet, automātiski mēģinās nākamo.
+    models_to_try = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
+    
     current_year = datetime.now().year
-
-    # 3. SEND REQUEST
-    url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={api_key}"
-    headers = {"Content-Type": "application/json"}
     
     prompt = f"""
     You are a travel logistics assistant.
     Task: Convert text into a strict "Pick-up / Drop-off" manifest.
-
-    --- CONTEXT ---
-    Current Year: {current_year}
-    If the year is missing in the input text, ASSUME it is {current_year}.
+    Current Year: {current_year} (Use this if year is missing).
 
     --- RULES ---
     1. HEADER: [DD.MM.YYYY], [Pax] pax, [Start City]
-       - Do NOT put times in the header.
+    2. FORMAT:
+       - Pick-up [HH:MM] [Location] ([Flight Info])
+       - Drop-off [Location] ([Flight Info])
+       *[Luggage info or Notes]
+    3. CLEANUP: No bold text (**). Convert 12h to 24h.
     
-    2. IF DETAILS ARE KNOWN (Specific Hotels/Times):
-       - Line 1: "- Pick-up [HH:MM] [Location] ([Flight Info])"
-       - Line 2: "- Drop-off [Location] ([Flight Info])"
-       - Line 3: "*[Luggage info or Notes]"
-       
-       *Note: If specific pickup time is missing, just write "- Pick-up [Location]".*
-       *Note: Put Flight Arrival/Departure info inside parenthesis at the end of the line.*
-
-    3. IF DETAILS ARE UNKNOWN (Vague request):
-       - Just write "Addresses, Times: TBC" under the header.
-       - Then list the cities with hyphens.
-
-    4. CLEANUP:
-       - No bold text (**). 
-       - Convert 12h times to 24h (21:45).
-       - Group strictly by date.
-
     --- INPUT TEXT ---
     {text}
     """
-    
-    data = {"contents": [{"parts": [{"text": prompt}]}]}
-    
-    try:
-        response = requests.post(url, headers=headers, json=data, timeout=60)
-        
-        if response.status_code == 200:
-            result = response.json()
-            if 'candidates' in result:
-                clean_text = result['candidates'][0]['content']['parts'][0]['text']
-                clean_text = clean_text.replace("**", "").replace("##", "")
-                return "SUCCESS", clean_text, model_name
-            else:
-                return "ERROR", f"Blocked response. Raw: {result}", model_name
-        else:
-            return "ERROR", f"Google Error {response.status_code}: {response.text}", model_name
 
-    except Exception as e:
-        return "ERROR", f"Connection Failed: {str(e)}", "Unknown"
+    for model in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        headers = {"Content-Type": "application/json"}
+        data = {"contents": [{"parts": [{"text": prompt}]}]}
+        
+        try:
+            response = requests.post(url, headers=headers, json=data, timeout=30)
+            if response.status_code == 200:
+                result = response.json()
+                clean_text = result['candidates'][0]['content']['parts'][0]['text']
+                return "SUCCESS", clean_text.replace("**", ""), model
+            elif response.status_code == 429:
+                return "RATE_LIMIT", "Too many requests. Please wait 15 seconds.", model
+        except:
+            continue
+            
+    return "ERROR", "All models failed. Check your API key and permissions.", "None"
 
 # --- INTERFACE ---
 if st.button("Convert Format", type="primary"):
@@ -105,12 +67,13 @@ if st.button("Convert Format", type="primary"):
     elif not raw_text:
         st.warning("Please enter text.")
     else:
-        with st.spinner("Finding best model & converting..."):
-            status, result, used_model = call_google_ai_auto(api_key, raw_text)
+        with st.spinner("Processing..."):
+            status, result, used_model = call_google_ai_stable(api_key, raw_text)
             
             if status == "SUCCESS":
                 st.success(f"Success! (Model: {used_model})")
-                st.text_area("Result:", value=result, height=450)
+                st.text_area("Result:", value=result, height=400)
+            elif status == "RATE_LIMIT":
+                st.warning(result)
             else:
-                st.error(f"Failed using model: {used_model}")
-                st.code(result)
+                st.error(result)
