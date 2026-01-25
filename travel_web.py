@@ -37,33 +37,38 @@ def call_google_ai(api_key, text):
     
     current_year = datetime.now().year
     
-    # --- PROMPT WITH 24H RULE ---
+    # --- PROMPT WITH NOTE PRESERVATION ---
     prompt = f"""
     Task: Convert travel text into a vertical logistics manifest.
     Year: {current_year}. 
 
     --- CRITICAL RULES ---
     1. TIME FORMAT (24H ONLY): 
-       - Convert ALL times to 24-hour format. 
-       - 2pm -> 14:00
-       - 8:30pm -> 20:30
-       - 9am -> 09:00
-       - NEVER use "am" or "pm" in the output.
-
-    2. DUPLICATION: If a date has multiple service times, create a completely separate Pick-up/Drop-off block for each time.
+       - Convert ALL times to 24-hour format (e.g., 5pm -> 17:00).
     
-    3. FLIGHT INFO: Place flight info ONLY on the Airport line.
+    2. PRESERVE SUGGESTIONS (CRITICAL): 
+       - If the client includes a note or question in brackets like "(drop-off 1.5/2h before?)" or "(estimated)", you MUST keep that text exactly as written at the end of the line. 
+       - DO NOT delete client notes.
+
+    3. DUPLICATION: If a date has multiple service times, create a completely separate Pick-up/Drop-off block for each time.
+    
+    4. FLIGHT INFO: Place flight info ONLY on the Airport line.
        - Pick-up [Time] [Airport] (Flight arrival [Time])
        - Drop-off [Airport] (Flight departure [Time])
 
-    4. STRUCTURE: 
+    5. STRUCTURE: 
        - Header: [DD.MM.YYYY], [Pax] pax, [Start City]
        - Lines: "- Pick-up..." and "- Drop-off..." must be on separate lines.
        - Spacing: Double empty line between dates.
     
-    5. NO GUESSING: If month is missing, use "TBC". If pax is missing, use "TBC".
+    6. NO GUESSING: If month is missing, use "TBC". If pax is missing, use "TBC".
     
-    6. NO BOLD: Do not use **.
+    7. NO BOLD: Do not use **.
+
+    --- EXAMPLE OUTPUT ---
+    07.02.2026, 4 pax, Kitzbuhel
+    - Pick-up 14:00 Lebenberg Schosshotel
+    - Drop-off Munich Airport (Flight 17:00) (drop-off 1.5/2h before?)
 
     --- INPUT ---
     {text}
@@ -96,10 +101,10 @@ if process_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Converting to 24h format..."):
+        with st.spinner("Formatting (Preserving notes + 24h)..."):
             status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
-                st.success("Formatted (24h style)!")
+                st.success("Formatted!")
                 st.code(result, language=None)
             else:
                 st.error("Failed.")
