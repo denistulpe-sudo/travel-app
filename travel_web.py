@@ -37,35 +37,36 @@ def call_google_ai(api_key, text):
     
     current_year = datetime.now().year
     
-    # --- DUPLICATION PROMPT ---
+    # --- UPDATED LOGIC PROMPT ---
     prompt = f"""
     Task: Convert travel text into a vertical logistics manifest.
     Year: {current_year}. 
 
     --- STRIKTIE NOTEIKUMI (STRICT RULES) ---
-    1. DUPLICATE FOR DIFFERENT TIMES: If a date has multiple flight/service times (e.g., 17:00 and 20:00), you MUST create a completely separate block of lines for each time. 
-       - DO NOT use commas to list times (e.g., No "17:00, 20:00").
-       - REPEAT the "- Pick-up" and "- Drop-off" lines for every single time found.
-    
-    2. TWO LINES PER TRIP: Every single transfer must consist of exactly:
-       - One line starting with "- Pick-up"
-       - One line starting with "- Drop-off"
+    1. FLIGHT INFO LOCATION: Flight info (Arrival/Departure) MUST only be placed on the line that mentions the AIRPORT. 
+       - If picking up from Airport: "- Pick-up [Time] [Airport Name] (Flight arrival [Time])"
+       - If dropping off at Airport: "- Drop-off [Airport Name] (Flight departure [Time])"
+       - NEVER put flight info on the Hotel/City address line.
 
-    3. HEADER: [DD.MM.YYYY], [Total Pax for that date] pax, [Start City]
+    2. DUPLICATION: Create a separate Pick-up/Drop-off block for every unique service time or flight.
     
-    4. NOTES: Keep suggestions like "(drop-off 1.5/2h before?)" exactly as written next to the relevant time.
+    3. VERTICALITY: 
+       - Header on its own line.
+       - Pick-up on its own line.
+       - Drop-off on its own line.
+       - Luggage/Notes on its own line (starting with *).
     
-    5. VERTICALITY: Every single element must be on a new line. 
+    4. HEADER: [DD.MM.YYYY], [Pax] pax, [Start City]
     
-    6. SPACING: Add a double blank line between different dates.
+    5. NO BOLD: Do not use ** symbols.
+    
+    6. SPACING: Double blank line between different dates.
 
-    --- EXAMPLE OF DUPLICATION ---
-    08.02.2026, 19 pax, Kitzbuhel
-    - Pick-up Lebenberg Schosshotel
-    - Drop-off Munich Airport (Flight 17:00) (drop-off 1.5/2h before?)
-
-    - Pick-up Lebenberg Schosshotel
-    - Drop-off Munich Airport (Flight 20:00) (drop-off 1.5/2h before?)
+    --- EXPECTED FORMAT ---
+    26.03.2026, 18 pax, Kaunas
+    - Pick-up 21:45 Kaunas Airport (Flight arrival 21:15)
+    - Drop-off Domus Maria Hotel, Vilnius
+    *Small hand luggage only
 
     --- INPUT ---
     {text}
@@ -99,10 +100,10 @@ if process_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Processing duplicated time blocks..."):
+        with st.spinner("Correcting flight logic and formatting..."):
             status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
-                st.success("Itinerary generated!")
+                st.success("Manifest generated correctly!")
                 st.code(result, language=None)
             else:
                 st.error("Failed.")
