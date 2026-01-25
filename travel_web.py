@@ -37,30 +37,26 @@ def call_google_ai(api_key, text):
     
     current_year = datetime.now().year
     
-    # --- PROMPT WITH AGGRESSIVE SPACING & HEADERS ---
+    # --- PROMPT WITH LUGGAGE RULES ---
     prompt = f"""
     Task: Convert travel text into a vertical logistics manifest.
     Year: {current_year}. 
 
     --- CRITICAL FORMATTING RULES ---
-    1. SEPARATION (CRITICAL): 
-       - You MUST insert a DOUBLE EMPTY LINE between EVERY SINGLE transfer block. 
-       - Even if two transfers are on the same date (e.g. 5th Feb has 2 groups), they must be visually separated by white space.
-       - NEVER squash text like "Drop-off Hotel05.02.2026".
-
-    2. HEADER SPECIFICITY:
-       - Format: [DD.MM.YYYY], [Pax] pax, [Specific Start Point]
-       - If the pick-up is Munich Airport, the Header must say "Munich Airport", not just "Munich".
+    1. SEPARATION: Insert a DOUBLE EMPTY LINE between every transfer block.
     
-    3. TIME FORMAT (24H): 
-       - Convert all times to 24h (e.g. 7:35pm -> 19:35).
-       - If time is unknown/calculated, use "(Time TBC)".
+    2. HEADER: [DD.MM.YYYY], [Pax] pax, [Specific Start Point]
+       - If start is Munich Airport, write "Munich Airport".
+    
+    3. TIME (24H): Convert to 24h format (e.g. 19:35). Use "(Time TBC)" if unknown.
 
-    4. PRESERVE NOTES: 
-       - Keep client notes like "(drop-off 1.5/2h before?)" exactly where they are.
+    4. PRESERVE IN-LINE NOTES: Keep suggestions like "(drop-off 2h before)" on the same line as the drop-off.
 
-    5. FLIGHT INFO: 
-       - Attach flight info ONLY to the Airport line (Pick-up or Drop-off).
+    5. LUGGAGE & EXTRAS (BOTTOM): 
+       - Extract ALL requirements that are not time/location related (e.g., "Small hand luggage", "Child seat needed", "English speaking driver", "Water included").
+       - Place them at the very bottom of the relevant transfer block.
+       - Start each note with a single * symbol.
+       - Example: * 20x Large Suitcases + 10x Carry-ons
 
     6. NO BOLD: Do not use **.
 
@@ -68,14 +64,8 @@ def call_google_ai(api_key, text):
     05.02.2026, 13 pax, Munich Airport
     - Pick-up 19:35 Munich Airport (Flight arrival 19:35)
     - Drop-off Lebenberg Schosshotel
-
-    05.02.2026, 10 pax, Munich Airport
-    - Pick-up 20:45 Munich Airport (Flight arrival 20:45)
-    - Drop-off Lebenberg Schosshotel
-
-    07.02.2026, 4 pax, Kitzbuhel
-    - Pick-up (Time TBC) Lebenberg Schosshotel
-    - Drop-off Munich Airport (Flight departure 19:30) (drop-off 1.5/2h before?)
+    * Large luggage + Skis
+    * Guide requested
 
     --- INPUT ---
     {text}
@@ -108,10 +98,10 @@ if process_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Applying strict spacing & 24h format..."):
+        with st.spinner("Formatting manifest..."):
             status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
-                st.success("Formatted!")
+                st.success("Formatted with Notes!")
                 st.code(result, language=None)
             else:
                 st.error("Failed.")
