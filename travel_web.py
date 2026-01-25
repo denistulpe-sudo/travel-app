@@ -4,13 +4,13 @@ import json
 from datetime import datetime
 
 # --- PAGE SETUP ---
-st.set_page_config(page_title="Inquiry Auditor", page_icon="🔍", layout="centered")
+st.set_page_config(page_title="Travel Formatter Pro", page_icon="🚐", layout="centered")
 
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("Settings")
     api_key = st.text_input("Google API Key", type="password")
-    st.info(f"Today is: {datetime.now().strftime('%A, %d.%m.%Y')}")
+    st.info(f"Today's Date: {datetime.now().strftime('%d.%m.%Y')}")
     st.divider()
 
 # --- FUNCTIONS ---
@@ -28,78 +28,69 @@ def get_available_model(api_key):
         except: continue
     return None, None
 
-def audit_email(api_key, text):
+def call_google_ai(api_key, text):
     model_path, api_version = get_available_model(api_key)
     if not model_path: return "ERROR", "API Key invalid or API disabled."
 
     url = f"https://generativelanguage.googleapis.com/{api_version}/{model_path}:generateContent?key={api_key}"
+    headers = {"Content-Type": "application/json"}
     
-    current_date = datetime.now().strftime('%A, %d.%m.%Y')
+    current_year = datetime.now().year
     
-    # --- SMART AUDIT PROMPT ---
+    # --- UPDATED "SKEPTICAL" PROMPT ---
     prompt = f"""
-    You are a professional travel auditor. Analyze this email against 8 requirements.
-    Today's Date: {current_date}.
+    Task: Convert travel text into a vertical logistics manifest.
+    Year: {current_year}. 
 
-    --- CRITICAL CHECKS ---
-    1. EXACT DATES: If the client says "Monday the 13th" without a month, flag it as MISSING MONTH.
-    2. PAX COUNT: If the client asks for vehicle prices (e.g., "8-seater") but does not state how many people are traveling, flag it as MISSING PAX.
-    3. LOCATIONS: Must have specific cities/hotels.
-    4. VEHICLE: Preferred type.
-    5. LUGGAGE: Amount/Type.
-    6. DURATION: Hours/Days.
-    7. EXTRAS: Guides/Stops.
-    8. DRIVER: Meals/Lodging (if multi-day).
+    --- CRITICAL SAFETY RULES (ANTI-GUESSING) ---
+    1. DATE: If the month is not explicitly mentioned (e.g., "Monday the 13th"), do NOT guess the month. Use ".MM." or "TBC" for the month (e.g., 13.MM.{current_year}).
+    2. PAX: Do NOT assume the number of passengers based on the vehicle requested. If the email asks for "8-seat minivan prices," but doesn't say "we are 8 people," set Pax to "TBC".
+    3. VEHICLE OPTIONS: If the client is asking for multiple pricing options, list them under the * bullet point at the bottom.
+    4. NO CALCULATIONS: Use the times exactly as written.
 
-    --- TASK ---
-    1. List what is MISSING or VAGUE.
-    2. Write a polite reply. 
-       - If the month is missing: "Could you please clarify which month you are traveling in?"
-       - If pax are missing: "Could you please confirm the total number of passengers?"
-       - Use the phrases: "Could you please provide an exact itinerary..." and "As soon as I have all the information, I will be able to calculate the costs!"
+    --- FORMAT RULES ---
+    - Header: [DD.MM.YYYY], [Pax] pax, [Start City]
+    - Lines: Every Pick-up and Drop-off on its own NEW line.
+    - Notes: Every note or vehicle request on its own line starting with *.
+    - Spacing: Double blank line between different dates.
+    - No Bold: Do not use **.
 
-    --- EMAIL TO AUDIT ---
+    --- INPUT ---
     {text}
     """
 
     data = {"contents": [{"parts": [{"text": prompt}]}]}
     try:
-        response = requests.post(url, json=data, timeout=60)
+        response = requests.post(url, headers=headers, json=data, timeout=60)
         if response.status_code == 200:
             result = response.json()
-            return "SUCCESS", result['candidates'][0]['content']['parts'][0]['text'].replace("**", "")
+            output = result['candidates'][0]['content']['parts'][0]['text']
+            return "SUCCESS", output.replace("**", "").strip()
         else: return "ERROR", f"Google Error {response.status_code}"
     except Exception as e: return "ERROR", str(e)
 
-# --- CLEAR LOGIC ---
-def clear_audit_input():
-    st.session_state["audit_input"] = ""
+def clear_text_area():
+    st.session_state["main_input"] = ""
 
 # --- UI ---
-st.title("🔍 Email Inquiry Auditor")
-st.markdown("Checks for missing months, passenger counts, and logistics.")
-
-email_input = st.text_area("Paste the customer's email here:", 
-                           height=300, 
-                           key="audit_input")
+st.title("🚐 Travel Route Formatter")
+raw_text = st.text_area("Paste email here:", height=300, key="main_input")
 
 col1, col2 = st.columns([1, 4])
 with col1:
-    st.button("Clear Text", on_click=clear_audit_input)
+    st.button("Clear Text", on_click=clear_text_area)
 with col2:
-    audit_btn = st.button("Audit Inquiry", type="primary")
+    process_btn = st.button("Format Now", type="primary")
 
-if audit_btn:
+if process_btn:
     if not api_key: st.error("Please enter your API Key!")
-    elif not st.session_state["audit_input"]: st.warning("Please paste an email.")
+    elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Sherlock is investigating the details..."):
-            status, result = audit_email(api_key, st.session_state["audit_input"])
+        with st.spinner("Analyzing data (strictly)..."):
+            status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
-                st.success("Audit Complete")
-                st.markdown("---")
-                st.markdown("### 📋 Analysis & Draft Response")
-                st.write(result)
+                st.success("Manifest generated (No assumptions made)!")
+                st.code(result, language=None)
             else:
-                st.error("Audit failed.")
+                st.error("Failed.")
                 st.code(result)
