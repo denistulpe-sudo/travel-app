@@ -3,7 +3,7 @@ import requests
 import json
 from datetime import datetime
 
-# --- LAPAS KONFIGURĀCIJA ---
+# --- PAGE SETUP ---
 st.set_page_config(page_title="Travel Formatter", page_icon="🚐", layout="centered")
 
 # --- SIDEBAR ---
@@ -12,7 +12,6 @@ with st.sidebar:
     api_key = st.text_input("Google API Key", type="password")
     st.info(f"Current Year: {datetime.now().year}")
     st.divider()
-    st.caption("Instructions: Paste email, click Format. Use Clear to start over.")
 
 # --- FUNCTIONS ---
 def get_available_model(api_key):
@@ -65,28 +64,24 @@ def call_google_ai(api_key, text):
     except Exception as e:
         return "ERROR", str(e)
 
-# --- CLEAR TEXT LOGIKA ---
-if 'input_text' not in st.session_state:
-    st.session_state.input_text = ""
-
-def clear_text():
-    st.session_state.input_text = ""
+# --- CLEAR LOGIC ---
+# This function now specifically targets the widget key "main_input"
+def clear_text_area():
+    st.session_state["main_input"] = ""
 
 # --- UI ---
 st.title("🚐 Travel Route Formatter")
 
-# Text area ir piesaistīta session_state
+# The text_area is linked to the key "main_input"
 raw_text = st.text_area("Paste messy email here:", 
-                        value=st.session_state.input_text, 
-                        height=200, 
+                        height=250, 
                         key="main_input")
 
-# Divas pogas viena blakus otrai
-col1, col2 = st.columns([1, 5])
+col1, col2 = st.columns([1, 4])
+
 with col1:
-    if st.button("Clear"):
-        clear_text()
-        st.rerun() # Pārlādē lapu, lai nodzēstu tekstu tūlītēji
+    # Clicking this calls the clear function and then reruns the app
+    st.button("Clear Text", on_click=clear_text_area)
 
 with col2:
     process_btn = st.button("Format Now", type="primary")
@@ -94,11 +89,11 @@ with col2:
 if process_btn:
     if not api_key:
         st.error("Please enter your API Key!")
-    elif not raw_text:
-        st.warning("Please enter text.")
+    elif not st.session_state["main_input"]:
+        st.warning("Please paste text.")
     else:
         with st.spinner("Processing..."):
-            status, result = call_google_ai(api_key, raw_text)
+            status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
                 st.success("Done!")
                 st.code(result, language=None)
