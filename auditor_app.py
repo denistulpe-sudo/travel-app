@@ -37,7 +37,7 @@ def audit_email(api_key, text):
     current_date_str = datetime.now().strftime('%A, %d.%m.%Y')
     current_year_str = str(datetime.now().year)
     
-    # --- PROMPT WITH COMMON SENSE RULES ---
+    # --- PROMPT WITH LOCATION VALIDATION ---
     prompt = f"""
     You are a professional travel auditor. Analyze this email.
     Today's Date: {current_date_str}.
@@ -50,10 +50,14 @@ def audit_email(api_key, text):
     2. PAX COUNT: 
        - Must be specific number. "8-seater" is NOT a pax count -> :red[❌ Pax: Not specified].
     
-    3. LOCATIONS: Specific cities/hotels required.
+    3. LOCATION VALIDITY (Google Maps Check):
+       - Use your internal knowledge to judge if the location is findable on Google Maps.
+       - If Specific (e.g., "Hotel Rixwell Elefant, Riga", "Luton Airport", "10 Downing St") -> :green[✅ Locations: Specific & Searchable].
+       - If Vague (e.g., "The hotel", "My house", "The Airbnb near the center", "Restaurant in Old Town") -> :red[❌ Locations: Too Vague (Address needed)].
+       - If Ambiguous (e.g., "The Hilton" without saying which city) -> :red[❌ Locations: Ambiguous (City missing)].
     
     4. VEHICLE PREFERENCE: 
-       - If client mentions "budget", "cheapest", "best price", or "standard" -> :green[✅ Vehicle: Standard/Economy (Implied by 'budget')].
+       - If client implies "budget/cheapest/standard" -> :green[✅ Vehicle: Standard (Implied by 'budget')].
        - If not specified -> :red[❌ Vehicle: Type not specified].
 
     5. LUGGAGE: Amount/Type.
@@ -63,8 +67,8 @@ def audit_email(api_key, text):
     7. EXTRAS: Guide/Stops.
     
     8. DRIVER ACCOMMODATION (Context Check):
-       - If the trip is a SHORT transfer (e.g., airport transfer, few hours, one day) -> :green[✅ Driver Accom: Not applicable for short trips].
-       - Only mark as :red[❌ Missing] if the itinerary spans MULTIPLE DAYS (Overnight).
+       - Short trip? -> :green[✅ Driver Accom: N/A (Short trip)].
+       - Multi-day? -> Check if included.
 
     --- OUTPUT FORMAT ---
     1. PART 1: "📊 Analysis"
@@ -74,8 +78,7 @@ def audit_email(api_key, text):
 
     2. PART 2: "✉️ Draft Reply"
        - Write a polite email asking ONLY for the items marked with ❌.
-       - DO NOT ask for driver accommodation if it is a short trip.
-       - DO NOT ask for vehicle type if 'budget' was requested (quote the Standard option).
+       - If locations are vague, ask: "Could you please provide the exact address or Google Maps link for the pick-up/drop-off?"
 
     --- EMAIL TO AUDIT ---
     {text}
@@ -112,7 +115,7 @@ if audit_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["audit_input"]: st.warning("Please paste an email.")
     else:
-        with st.spinner("Checking context and logic..."):
+        with st.spinner("Checking location validity..."):
             status, result = audit_email(api_key, st.session_state["audit_input"])
             if status == "SUCCESS":
                 st.success("Analysis Complete")
