@@ -37,38 +37,45 @@ def call_google_ai(api_key, text):
     
     current_year = datetime.now().year
     
-    # --- PROMPT WITH NOTE PRESERVATION ---
+    # --- PROMPT WITH AGGRESSIVE SPACING & HEADERS ---
     prompt = f"""
     Task: Convert travel text into a vertical logistics manifest.
     Year: {current_year}. 
 
-    --- CRITICAL RULES ---
-    1. TIME FORMAT (24H ONLY): 
-       - Convert ALL times to 24-hour format (e.g., 5pm -> 17:00).
-    
-    2. PRESERVE SUGGESTIONS (CRITICAL): 
-       - If the client includes a note or question in brackets like "(drop-off 1.5/2h before?)" or "(estimated)", you MUST keep that text exactly as written at the end of the line. 
-       - DO NOT delete client notes.
+    --- CRITICAL FORMATTING RULES ---
+    1. SEPARATION (CRITICAL): 
+       - You MUST insert a DOUBLE EMPTY LINE between EVERY SINGLE transfer block. 
+       - Even if two transfers are on the same date (e.g. 5th Feb has 2 groups), they must be visually separated by white space.
+       - NEVER squash text like "Drop-off Hotel05.02.2026".
 
-    3. DUPLICATION: If a date has multiple service times, create a completely separate Pick-up/Drop-off block for each time.
+    2. HEADER SPECIFICITY:
+       - Format: [DD.MM.YYYY], [Pax] pax, [Specific Start Point]
+       - If the pick-up is Munich Airport, the Header must say "Munich Airport", not just "Munich".
     
-    4. FLIGHT INFO: Place flight info ONLY on the Airport line.
-       - Pick-up [Time] [Airport] (Flight arrival [Time])
-       - Drop-off [Airport] (Flight departure [Time])
+    3. TIME FORMAT (24H): 
+       - Convert all times to 24h (e.g. 7:35pm -> 19:35).
+       - If time is unknown/calculated, use "(Time TBC)".
 
-    5. STRUCTURE: 
-       - Header: [DD.MM.YYYY], [Pax] pax, [Start City]
-       - Lines: "- Pick-up..." and "- Drop-off..." must be on separate lines.
-       - Spacing: Double empty line between dates.
-    
-    6. NO GUESSING: If month is missing, use "TBC". If pax is missing, use "TBC".
-    
-    7. NO BOLD: Do not use **.
+    4. PRESERVE NOTES: 
+       - Keep client notes like "(drop-off 1.5/2h before?)" exactly where they are.
 
-    --- EXAMPLE OUTPUT ---
+    5. FLIGHT INFO: 
+       - Attach flight info ONLY to the Airport line (Pick-up or Drop-off).
+
+    6. NO BOLD: Do not use **.
+
+    --- EXPECTED OUTPUT FORMAT ---
+    05.02.2026, 13 pax, Munich Airport
+    - Pick-up 19:35 Munich Airport (Flight arrival 19:35)
+    - Drop-off Lebenberg Schosshotel
+
+    05.02.2026, 10 pax, Munich Airport
+    - Pick-up 20:45 Munich Airport (Flight arrival 20:45)
+    - Drop-off Lebenberg Schosshotel
+
     07.02.2026, 4 pax, Kitzbuhel
-    - Pick-up 14:00 Lebenberg Schosshotel
-    - Drop-off Munich Airport (Flight 17:00) (drop-off 1.5/2h before?)
+    - Pick-up (Time TBC) Lebenberg Schosshotel
+    - Drop-off Munich Airport (Flight departure 19:30) (drop-off 1.5/2h before?)
 
     --- INPUT ---
     {text}
@@ -101,7 +108,7 @@ if process_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Formatting (Preserving notes + 24h)..."):
+        with st.spinner("Applying strict spacing & 24h format..."):
             status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
                 st.success("Formatted!")
