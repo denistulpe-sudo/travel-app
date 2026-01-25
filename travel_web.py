@@ -3,8 +3,8 @@ import requests
 import json
 from datetime import datetime
 
-# --- LAPAS KONFIGURĀCIJA ---
-st.set_page_config(page_title="Travel Formatter Pro", page_icon="🚐", layout="centered")
+# --- PAGE SETUP ---
+st.set_page_config(page_title="Travel Formatter Minimal", page_icon="🚐", layout="centered")
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -37,25 +37,31 @@ def call_google_ai(api_key, text):
     
     current_year = datetime.now().year
     
-    # --- PROMPT AR SUGGESTED TIME LOGIKU ---
+    # --- MINIMALIST VERTICAL PROMPT ---
     prompt = f"""
-    You are a professional logistics dispatcher. Convert the travel request into a strict manifest.
-    Current Year: {current_year}.
+    Task: Convert travel text into a vertical manifest.
+    Year: {current_year}. 
 
-    --- TIME CALCULATION RULES ---
-    1. DEPARTURES: Look for "flight departure" or "catching a flight". 
-       - If the client suggests a buffer (e.g., "drop-off 2h before"), CALCULATE the Pick-up time based on that suggestion PLUS travel time (assume travel time is ~1h if cities are different).
-       - If no suggestion is given, subtract 3 hours from flight time to get the Pick-up time.
-       - Always mention the calculated buffer in brackets, e.g., (Pick-up calculated as 2.5h before flight).
+    --- STRICT RULES ---
+    1. NO CALCULATIONS: Do not subtract or add time. Use the times provided in the text.
+    2. NOTES: If the client provides suggestions like "(drop-off 1.5/2h before?)", keep that text EXACTLY. 
+    3. VERTICALITY: 
+       - Header on its own line.
+       - Every "- Pick-up" on its own line.
+       - Every "- Drop-off" on its own line.
+       - Empty line between different dates.
+    4. HEADER: [DD.MM.YYYY], [Total Pax] pax, [Start City]
+    5. NO BOLD: Do not use any ** symbols.
+    6. CLEANLINESS: No extra "AI chatter" or explanations like "calculated as...".
 
-    2. ARRIVALS: Pick-up time = Flight arrival time.
+    --- EXAMPLE OUTPUT ---
+    05.02.2026, 23 pax, Munich Airport
+    - Pick-up 19:35 Munich Airport
+    - Drop-off Lebenberg Schosshotel, Kitzbuhel
 
-    --- FORMAT RULES ---
-    1. EVERY transfer = exactly TWO lines: "- Pick-up" and "- Drop-off".
-    2. HEADER: [DD.MM.YYYY], [Total Pax for that date] pax, [Start City]
-    3. SUGGESTIONS: If the client made a specific note (like "drop-off 2h before"), include it at the end of the line in brackets.
-    4. VERTICALITY: New line for every point. Empty line between different dates.
-    5. NO BOLD: Do not use **.
+    07.02.2026, 4 pax, Kitzbuhel
+    - Pick-up Lebenberg Schosshotel
+    - Drop-off Munich Airport (Flight 19:30) (drop-off 1.5/2h before?)
 
     --- INPUT ---
     {text}
@@ -67,6 +73,7 @@ def call_google_ai(api_key, text):
         if response.status_code == 200:
             result = response.json()
             output = result['candidates'][0]['content']['parts'][0]['text']
+            # Final cleanup to force verticality if the AI fails
             return "SUCCESS", output.replace("**", "").strip()
         else: return "ERROR", f"Google Error {response.status_code}"
     except Exception as e: return "ERROR", str(e)
@@ -75,9 +82,9 @@ def clear_text_area():
     st.session_state["main_input"] = ""
 
 # --- UI ---
-st.title("🚐 Travel Route Formatter Pro")
+st.title("🚐 Travel Route Formatter")
 
-raw_text = st.text_area("Paste messy email here:", height=300, key="main_input")
+raw_text = st.text_area("Paste email here:", height=300, key="main_input")
 
 col1, col2 = st.columns([1, 4])
 with col1:
@@ -89,10 +96,11 @@ if process_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Analyzing suggestions and formatting..."):
+        with st.spinner("Formatting..."):
             status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
-                st.success("Itinerary generated with suggested buffers!")
+                st.success("Itinerary generated!")
+                # Using st.code ensures line breaks are strictly respected and copyable
                 st.code(result, language=None)
             else:
                 st.error("Failed.")
