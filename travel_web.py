@@ -1,12 +1,10 @@
 import streamlit as st
 import requests
 import json
-import time
 from datetime import datetime
 
 # --- PAGE SETUP ---
-st.set_page_config(page_title="Travel Formatter", page_icon="✈️", layout="centered")
-st.title("✈️ Travel Logistics Converter")
+st.set_page_config(page_title="Travel Master Tool", page_icon="🚐", layout="centered")
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -14,66 +12,75 @@ with st.sidebar:
     api_key = st.text_input("Google API Key", type="password")
     st.info(f"Current Year: {datetime.now().year}")
 
-# --- INPUT ---
-raw_text = st.text_area("Paste messy email/text here:", height=200)
-
 # --- FUNCTIONS ---
-def call_google_ai_stable(api_key, text):
-    # Mēs mēģināsim šos trīs modeļus pēc kārtas. 
-    # Ja pirmais neiet, automātiski mēģinās nākamo.
-    models_to_try = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
-    
-    current_year = datetime.now().year
-    
-    prompt = f"""
-    You are a travel logistics assistant.
-    Task: Convert text into a strict "Pick-up / Drop-off" manifest.
-    Current Year: {current_year} (Use this if year is missing).
-
-    --- RULES ---
-    1. HEADER: [DD.MM.YYYY], [Pax] pax, [Start City]
-    2. FORMAT:
-       - Pick-up [HH:MM] [Location] ([Flight Info])
-       - Drop-off [Location] ([Flight Info])
-       *[Luggage info or Notes]
-    3. CLEANUP: No bold text (**). Convert 12h to 24h.
-    
-    --- INPUT TEXT ---
-    {text}
-    """
-
-    for model in models_to_try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-        headers = {"Content-Type": "application/json"}
-        data = {"contents": [{"parts": [{"text": prompt}]}]}
-        
+def get_available_model(api_key):
+    """Pārbauda, kuri modeļi ir pieejami šai atslēgai."""
+    # Mēģinām gan v1, gan v1beta versijas
+    for version in ["v1beta", "v1"]:
+        url = f"https://generativelanguage.googleapis.com/{version}/models?key={api_key}"
         try:
-            response = requests.post(url, headers=headers, json=data, timeout=30)
+            response = requests.get(url, timeout=10)
             if response.status_code == 200:
-                result = response.json()
-                clean_text = result['candidates'][0]['content']['parts'][0]['text']
-                return "SUCCESS", clean_text.replace("**", ""), model
-            elif response.status_code == 429:
-                return "RATE_LIMIT", "Too many requests. Please wait 15 seconds.", model
+                data = response.json()
+                for m in data.get('models', []):
+                    # Meklējam Gemini modeļus, kas atbalsta satura ģenerēšanu
+                    if 'gemini' in m['name'] and 'generateContent' in m['supportedGenerationMethods']:
+                        return m['name'], version
         except:
             continue
-            
-    return "ERROR", "All models failed. Check your API key and permissions.", "None"
+    return None, None
 
-# --- INTERFACE ---
-if st.button("Convert Format", type="primary"):
+def call_google_ai(api_key, text):
+    # 1. Atrodam strādājošu modeli
+    model_path, api_version = get_available_model(api_key)
+    
+    if not model_path:
+        return "ERROR", "API Key invalid or 'Generative Language API' not enabled in Google Cloud Console."
+
+    # 2. Sagatavojam pieprasījumu
+    url = f"https://generativelanguage.googleapis.com/{api_version}/{model_path}:generateContent?key={api_key}"
+    headers = {"Content-Type": "application/json"}
+    
+    current_year = datetime.now().year
+    prompt = f"""
+    Task: Convert text into a strict "Pick-up / Drop-off" manifest.
+    Rules: 
+    - Header: [DD.MM.YYYY], [Pax] pax, [Start City]
+    - Lines: - Pick-up [HH:MM] [Location] ([Flight]). - Drop-off [Location].
+    - Year: If missing, use {current_year}.
+    - No bold text. 24h format.
+    
+    Input: {text}
+    """
+
+    data = {"contents": [{"parts": [{"text": prompt}]}]}
+    
+    try:
+        response = requests.post(url, headers=headers, json=data, timeout=60)
+        if response.status_code == 200:
+            result = response.json()
+            output = result['candidates'][0]['content']['parts'][0]['text']
+            return "SUCCESS", output.replace("**", "")
+        else:
+            return "ERROR", f"Google Error {response.status_code}: {response.text}"
+    except Exception as e:
+        return "ERROR", str(e)
+
+# --- UI ---
+st.title("🚐 Travel Route Formatter")
+raw_text = st.text_area("Paste messy email here:", height=200)
+
+if st.button("Format Now", type="primary"):
     if not api_key:
         st.error("Please enter your API Key!")
     elif not raw_text:
         st.warning("Please enter text.")
     else:
-        with st.spinner("Processing..."):
-            status, result, used_model = call_google_ai_stable(api_key, raw_text)
-            
+        with st.spinner("Searching for available AI model..."):
+            status, result = call_google_ai(api_key, raw_text)
             if status == "SUCCESS":
-                st.success(f"Success! (Model: {used_model})")
+                st.success("Formatted successfully!")
                 st.text_area("Result:", value=result, height=400)
-            elif status == "RATE_LIMIT":
-                st.warning(result)
             else:
-                st.error(result)
+                st.error("Failed to connect.")
+                st.code(result)
