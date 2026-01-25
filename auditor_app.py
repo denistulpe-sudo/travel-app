@@ -37,48 +37,30 @@ def audit_email(api_key, text):
     current_date_str = datetime.now().strftime('%A, %d.%m.%Y')
     current_year_str = str(datetime.now().year)
     
-    # --- PROMPT WITH LOCATION VALIDATION ---
+    # --- PROMPT WITH FORMATTING RULES ---
     prompt = f"""
     You are a professional travel auditor. Analyze this email.
     Today's Date: {current_date_str}.
 
-    --- SMART ANALYSIS RULES ---
-    1. DATES: 
-       - Missing Month? -> :red[❌ Dates: Missing Month].
-       - Missing Year? -> :green[✅ Dates: (Assumed {current_year_str})].
-    
-    2. PAX COUNT: 
-       - Must be specific number. "8-seater" is NOT a pax count -> :red[❌ Pax: Not specified].
-    
-    3. LOCATION VALIDITY (Google Maps Check):
-       - Use your internal knowledge to judge if the location is findable on Google Maps.
-       - If Specific (e.g., "Hotel Rixwell Elefant, Riga", "Luton Airport", "10 Downing St") -> :green[✅ Locations: Specific & Searchable].
-       - If Vague (e.g., "The hotel", "My house", "The Airbnb near the center", "Restaurant in Old Town") -> :red[❌ Locations: Too Vague (Address needed)].
-       - If Ambiguous (e.g., "The Hilton" without saying which city) -> :red[❌ Locations: Ambiguous (City missing)].
-    
-    4. VEHICLE PREFERENCE: 
-       - If client implies "budget/cheapest/standard" -> :green[✅ Vehicle: Standard (Implied by 'budget')].
-       - If not specified -> :red[❌ Vehicle: Type not specified].
+    --- ANALYSIS RULES ---
+    1. DATES: Missing Month -> :red[❌]. Missing Year -> :green[✅ (Assumed {current_year_str})].
+    2. PAX: "8-seater" is NOT a pax count -> :red[❌].
+    3. LOCATION: Vague/Ambiguous -> :red[❌]. Specific -> :green[✅].
+    4. VEHICLE: "Budget" implies Standard -> :green[✅].
+    5. DRIVER ACCOM: Short trip -> :green[✅ N/A].
 
-    5. LUGGAGE: Amount/Type.
+    --- OUTPUT FORMATTING ---
+    PART 1: "📊 8-Point Analysis"
+    - You must list the 8 requirements vertically, numbered 1 to 8.
+    - Structure: "1. [Green/Red Icon] **[Requirement Name]**: [Result]"
     
-    6. DURATION: Hours/Days.
-    
-    7. EXTRAS: Guide/Stops.
-    
-    8. DRIVER ACCOMMODATION (Context Check):
-       - Short trip? -> :green[✅ Driver Accom: N/A (Short trip)].
-       - Multi-day? -> Check if included.
-
-    --- OUTPUT FORMAT ---
-    1. PART 1: "📊 Analysis"
-       - Use :green[✅ **[Requirement]**: [Details]]
-       - Use :red[❌ **[Requirement]**: [Issue]]
-       - Put every point on a new line.
-
-    2. PART 2: "✉️ Draft Reply"
-       - Write a polite email asking ONLY for the items marked with ❌.
-       - If locations are vague, ask: "Could you please provide the exact address or Google Maps link for the pick-up/drop-off?"
+    PART 2: "✉️ Draft Reply"
+    - Subject Line: Short and relevant (e.g. "Re: Transfer Request - [Location]").
+    - Opening: KEEP IT SHORT. Do NOT summarize the full details. 
+      - BAD: "Thank you for your request for 18 people from A to B on Date X..."
+      - GOOD: "Dear Client,\n\nThank you for your transfer request."
+    - Body: Ask ONLY for the items marked with :red[❌]. 
+    - Tone: Helpful and professional.
 
     --- EMAIL TO AUDIT ---
     {text}
@@ -115,10 +97,10 @@ if audit_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["audit_input"]: st.warning("Please paste an email.")
     else:
-        with st.spinner("Checking location validity..."):
+        with st.spinner("Analyzing requirements..."):
             status, result = audit_email(api_key, st.session_state["audit_input"])
             if status == "SUCCESS":
-                st.success("Analysis Complete")
+                st.success("Audit Complete")
                 st.markdown(result)
             else:
                 st.error("Audit failed.")
