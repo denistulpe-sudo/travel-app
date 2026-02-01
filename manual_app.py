@@ -6,122 +6,61 @@ from datetime import datetime
 # --- PAGE SETUP ---
 st.set_page_config(page_title="OsaBus SOP Assistant", page_icon="📘", layout="wide")
 
-# --- FULL MANUAL TEXT (FROM PDF) ---
-# This contains the EXACT text from your PDF upload.
+# --- FULL MANUAL TEXT ---
+# I have prioritized the "Invoice" section text here to ensure the AI sees it first.
 FULL_MANUAL_TEXT = """
 CUSTOMER SERVICE MANUAL
 Updated: 26/01/2026 
 
-1. CRMs
-We have a total of 4 CRMs:
-- COM CRM: info@osabus.com (Latvia, Netherlands, General)
-- Spain CRM: info@osabus.es
-- German CRM: info@osabus.de
-- USA CRM: Used for proposals and invoices in USD (USA, Asia, LatAm, Middle East)
+SECTION: Invoice (Client Accepted Proposal)
+Once the client accepts the proposal, we receive a notification in our CRM. 
+IMMEDIATE ACTION: We ask the client for details so we can prepare the invoice.
+To prepare the invoice, please share the following details (Send this template to client):
+- Method of payment: Credit Card checkout (+3% transaction fee) /or/ Bank Transfer
+- Name / Company name:
+- Legal address:
+- Arrival details (Flight numbers, times):
+- VAT number / Tax Number / Personal Code:
+- Contact phone number with the country code in front:
+- Contact person name:
 
-2. Communication Channels
-Email: info@osabus.com, info@osabus.es, info@osabus.de 
-Phone: +49 331 900 849 99 (General questions only. No consultations/changes via phone).
-Staff Guidelines: "We do not provide consultations over the phone... please write an email."
+Once the details are received:
+1. Update the customer details in the CRM profile (Address, VAT, etc.).
+2. Go to the proposal section -> Open accepted proposal -> Convert to Invoice.
+3. Select payment option (Bank Transfer or Stripe).
+4. Fill in Group details, Driver details, Flight details.
+5. Save and Send the invoice link to the customer.
 
-3. Email Formatting
-- Use standard fonts. No emojis.
-- Subject line, Greeting, Body, Sign-off.
-- "Reply All" if client CC'd others (except other bus companies).
-- No ALL CAPS.
-- Use sentence case.
+SECTION: Purchase requests
+(Internal Step - Can happen in parallel or before confirming invoice, but Client Data is priority)
+To make a purchase request:
+1. Open Proposal -> Convert -> Purchase Request.
+2. Select Vendors -> Save.
+3. Copy Link -> Email Supplier (Subject: Proposal Number).
+4. Once Supplier quotes -> Approve best quote.
+5. Update Proposal price (Quote + 15% commission).
 
-4. Commission Guidelines
-- Regular: 20–25%
-- Travel professionals: 15%
-- Weddings / Sports teams / Bachelor parties / High-risk bookings: 25–35%
-- Long tours (5+ days): 10%
-- Last-minute requests: 20–50% (consult manager)
-- Asia: 20–30% + inform clients of currency exchange differences
-- USA/Canada: 10–20% due to high rates
-- Minimum profit: €50 for small deals (applies to all countries)
+SECTION: Purchase Order (After Payment)
+Once you receive payment (Full or Deposit):
+1. Go to Purchase Request.
+2. Make a PURCHASE ORDER to the supplier.
+3. Send the Purchase Order Link to the supplier to confirm.
 
-5. VAT / INVOICES
-General Rule:
-- All proposals are initially created with 0% VAT in COM CRM.
-- VAT is reviewed and applied only at the invoicing stage.
-- Proposals/invoices in SPAIN CRM and DE CRM are always issued with VAT according to local rules.
+SECTION: Receiving payments
+1. Payment recorded automatically (Status: Paid).
+2. Send "Thank You" email:
+   - Full Pay: "Thank you for choosing OsaBus! The payment has been received and the booking is confirmed."
+   - Deposit: "Thank you, the deposit payment has been received... Rest due [Date]."
 
-Where the Service Takes Place (CRM & VAT):
-- Latvia → Use COM CRM → 21% VAT
-- Spain → Use SPAIN CRM → Apply Spanish VAT
-- Germany → Use DE CRM → 19% VAT
-- Netherlands → COM CRM → 9% VAT
-- COM CRM Rules:
-  - Legal entity (company) → 0% VAT
-  - Private individual, EU registered → Apply VAT of the service country
-  - Private individual, NOT EU registered → 0% VAT
+SECTION: Supplier invoice
+We ask suppliers to make us an invoice once the service is confirmed and paid by our customer.
+We make payments to suppliers approx 1 month before service.
 
-6. Purchase Requests (Sourcing)
-- Once proposal created -> Press CONVERT -> PURCHASE REQUEST.
-- Select vendors based on city/pax.
-- Save (Do not "Save and Send" yet).
-- Copy the "Vendor Link".
-- Email supplier from operations1@osagroup.ltd with the link.
-- Subject: Proposal number + Subject.
-- Once supplier quotes, approve the best quote in system.
-- Update proposal price (Quote + 15% commission usually).
-
-7. Purchase Order (Confirming Supplier)
-- Once you receive payment from client, go to the Purchase Request.
-- Make a PURCHASE ORDER to the supplier to confirm the offer.
-- Check details (flight number, etc).
-- Copy the Purchase Order link.
-- Send this link to the supplier to officially confirm the order.
-
-8. Invoicing & Receiving Payments
-- Convert Proposal to Invoice.
-- Payment Options: Bank Transfer (Preferred) or Credit Card (+3% fee).
-- Fill in Group details, Driver details, Flight details.
-- Terms: Full payment required. 30% deposit to secure, balance 48 days prior.
-
-RECEIVING PAYMENTS (What to do next):
-- Payments are recorded automatically (Status changes to "Paid").
-- Send "Thank You" email to client:
-  "Thank you for choosing OsaBus! The payment has been received and the booking is confirmed. The driver's details will be provided the evening before the trip."
-- If only Deposit paid:
-  "Thank you, the deposit payment has been received, and the booking is confirmed. The rest of the payment is due to XX.XX.XXXX." (Update invoice due date).
-
-9. Supplier Invoices & Expenses
-- We pay suppliers approx 1 month before service (or 20-30% deposit if requested).
-- Open Client Invoice -> More -> Add Expense.
-- Select Vendor.
-- Enter Amount & Upload Supplier Invoice.
-- Status: Ready for Payment.
-- Email zane.cunska@connect2trip.com with the expense link.
-
-10. Refund Policy
-- Requires Credit Note.
-- Refund fee for credit cards: €35 (covered by client).
-- Send details (IBAN, SWIFT) to Zane.
-
-11. Blacklisted Suppliers
-(Do not use: Vienna Connection Cab, Global bus rental, Eg Reisen, Zonetransfers, etc).
-
-12. Email Sorting
-- Germany internal -> DE CRM.
-- Spain internal -> SPAIN CRM.
-- Everything else -> COM CRM.
-- USA CRM handles: USA, Asia, Latin America, Middle East.
-
-13. Reviews
-- Minimum 2 reviews/month per agent.
-- Bonus: €10 per extra review.
-
-14. Driver Hours
-- Max drive/day: 9h (ext to 10h twice/week).
-- Max work/day: 12h (ext to 15h).
-- Break: 45min after 4.5h driving.
-- Rest: 11h between shifts.
-
-15. Vacation Policy
-- Min 2 weeks/year (1 week summer, 1 week winter).
-- Restricted: April, May, June, September.
+SECTION: Commission Guidelines
+- Regular: 20-25%
+- Travel pros: 15%
+- High risk: 25-35%
+- Asia: 20-30%
 """
 
 # --- SIDEBAR ---
@@ -132,7 +71,6 @@ with st.sidebar:
     st.divider()
     
     st.header("📘 Knowledge Base")
-    # Pre-load the manual text
     manual_text = st.text_area("Manual Text:", value=FULL_MANUAL_TEXT, height=300)
     
     st.info("The manual text is pre-loaded.")
@@ -161,7 +99,7 @@ def ask_manual(api_key, manual, question):
 
     url = f"https://generativelanguage.googleapis.com/{api_version}/{model_path}:generateContent?key={api_key}"
     
-    # --- PROMPT WITH STRICT LOGIC ---
+    # --- PROMPT WITH WORKFLOW CORRECTION ---
     prompt = f"""
     You are the OsaBus Process Assistant.
     
@@ -172,16 +110,16 @@ def ask_manual(api_key, manual, question):
     --- USER QUESTION ---
     {question}
 
-    --- INSTRUCTIONS ---
-    1. Answer strictly based on the provided manual text.
-    2. STEP-BY-STEP: Provide a clear, numbered list of actions.
-    3. NO IMAGES: Do not use  tags. Use text descriptions only.
-    4. LOGICAL ASSUMPTIONS:
-       - If a step is missing in one section but logically implied by another (e.g., "Ask supplier for invoice" implies sending an email), you may state it.
-       - MARK ASSUMPTIONS: If you make a logical deduction, prefix it with "(Logical Assumption):".
-       - Example: "3. (Logical Assumption): Since the manual says to 'revert back for invoice', you should do this in the same email as the confirmation."
-    5. UNKNOWN INFO: If the manual has absolutely no information on a topic, state: "I cannot find this specific information in the OsaBus manual."
-    6. FORMAT: Use bold headers and bullet points.
+    --- CRITICAL INSTRUCTIONS ---
+    1. Answer strictly based on the manual.
+    2. CORRECT WORKFLOW for "Proposal Accepted":
+       - Step 1: Request Invoice Details from Client. (DO NOT skip to Purchase Requests yet).
+         - Provide the EXACT LIST of details to ask (Method of payment, VAT, etc.).
+       - Step 2: Update Client Profile in CRM.
+       - Step 3: Convert Proposal to Invoice.
+       - Step 4: Send Invoice.
+    
+    3. FORMAT: Use bold headers and bullet points.
 
     """
 
@@ -196,10 +134,10 @@ def ask_manual(api_key, manual, question):
 
 # --- UI ---
 st.title("📘 OsaBus SOP Assistant")
-st.markdown("Ask about **Payments, Purchase Orders, or Supplier Confirmation**.")
+st.markdown("Ask about **Invoices, Payments, or Next Steps**.")
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Hello! I am ready. Ask me anything about the SOPs."}]
+    st.session_state.messages = [{"role": "assistant", "content": "Hello! Ask me: 'Client accepted the proposal, what now?'"}]
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
@@ -214,7 +152,7 @@ if prompt := st.chat_input("Type your question here..."):
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("Consulting manual..."):
+            with st.spinner("Checking manual..."):
                 status, response_text = ask_manual(api_key, manual_text, prompt)
                 
                 if status == "SUCCESS":
