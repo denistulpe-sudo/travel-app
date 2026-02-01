@@ -37,7 +37,7 @@ def audit_email(api_key, text):
     current_date_str = datetime.now().strftime('%A, %d.%m.%Y')
     current_year_str = str(datetime.now().year)
     
-    # --- PROMPT WITH STRICT LUGGAGE CONTEXT ---
+    # --- PROMPT WITH STRUCTURED REPLY ---
     prompt = f"""
     You are a professional logistics auditor. Analyze this inquiry strictly against 8 requirements.
     Today's Date: {current_date_str}.
@@ -50,7 +50,7 @@ def audit_email(api_key, text):
 
     --- 2. PASSENGER COUNT ---
     - Rule: Must be a specific number.
-    - Logic: "8-seater" or "Large bus" is NOT a pax count. Mark as :red[❌ Pax: Not specified] if only vehicle is mentioned.
+    - Logic: "8-seater" is NOT a pax count. Mark as :red[❌ Pax: Not specified].
 
     --- 3. LOCATIONS ---
     - Rule: Specific addresses or searchable landmarks.
@@ -63,33 +63,32 @@ def audit_email(api_key, text):
     --- 5. LUGGAGE (CONTEXTUAL INTELLIGENCE) ---
     - Rule: Confirming luggage is mandatory for safety/weight, EXCEPT in 3 cases.
     - Logic:
-      1. GREEN :green[✅]: If client explicitly stated count/size (e.g., "small bags only").
-      2. GREEN :green[✅]: If "Shuttle" service (Hotel <-> Restaurant/Gala/Conference) where luggage is impossible.
-      3. GREEN :green[✅]: If "Day Sightseeing" (Loop tour starting/ending at same hotel).
+      1. GREEN :green[✅]: If client explicitly stated count/size.
+      2. GREEN :green[✅]: If "Shuttle" service (Hotel <-> Restaurant/Gala).
+      3. GREEN :green[✅]: If "Day Sightseeing" (Loop tour).
       4. RED :red[❌]: ALL Airport transfers (MANDATORY).
       5. RED :red[❌]: ALL City-to-City transfers (MANDATORY).
 
     --- 6. DURATION ---
-    - Rule: Necessary for tours/disposals.
-    - Logic: If Point-to-Point transfer -> :green[✅ N/A (Transfer)]. If Tour -> Check hours.
+    - Rule: Necessary for tours. Point-to-Point -> :green[✅ N/A].
 
     --- 7. EXTRAS ---
     - Rule: Check for guides, stops, child seats.
 
     --- 8. DRIVER ACCOMMODATION ---
-    - Rule: Only for multi-day overnight trips.
-    - Logic: Short trip/One day -> :green[✅ N/A (Short trip)]. Overnight -> Check if included.
+    - Rule: Only for multi-day overnight trips. Short trip -> :green[✅ N/A].
 
     --- OUTPUT FORMAT ---
     PART 1: "📊 8-Point Logistics Audit"
-    - List the 8 points vertically, numbered 1 to 8.
-    - Use format: "1. [Green/Red Icon] **[Requirement Name]**: [Result]"
+    - Use a NUMBERED list (1., 2., 3.).
+    - Structure: "1. [Green/Red Icon] **[Requirement Name]**: [Result]"
 
     PART 2: "✉️ Draft Reply"
-    - Subject: Short & Professional (e.g. "Re: Transport Request").
-    - Intro: "Dear Client,\n\nThank you for your inquiry." (No summary).
-    - Body: Ask ONLY for the :red[❌] items. 
-    - Logic: Do NOT ask for luggage if it is marked Green. Do NOT ask for Driver Accom if it is a short trip.
+    - Intro: "Dear Client,\n\nThank you for your inquiry."
+    - Transition: "To provide you with an accurate quote, could you please clarify the following details:"
+    - Body: List the questions for missing items (:red[❌]) using HYPHENS (-).
+      - Example: "- Passenger Count: Please confirm the exact number..."
+    - Closing: "We look forward to assisting you further."
 
     --- EMAIL TO AUDIT ---
     {text}
@@ -126,7 +125,7 @@ if audit_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["audit_input"]: st.warning("Please paste an email.")
     else:
-        with st.spinner("Analyzing logistics & Context..."):
+        with st.spinner("Analyzing logistics..."):
             status, result = audit_email(api_key, st.session_state["audit_input"])
             if status == "SUCCESS":
                 st.success("Audit Complete")
