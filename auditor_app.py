@@ -37,7 +37,7 @@ def audit_email(api_key, text):
     current_date_str = datetime.now().strftime('%A, %d.%m.%Y')
     current_year_str = str(datetime.now().year)
     
-    # --- PROMPT AR SADALĪTĀJU (DELIMITER) ---
+    # --- PROMPT AR SEPARATORU ---
     prompt = f"""
     You are a professional logistics auditor. Analyze this inquiry strictly against 8 requirements.
     Today's Date: {current_date_str}.
@@ -83,14 +83,15 @@ def audit_email(api_key, text):
     - Use a NUMBERED list (1., 2., 3.).
     - Structure: "1. [Green/Red Icon] **[Requirement Name]**: [Result]"
 
-    ***SEPARATOR*** (Do not write anything else here)
+    ***SEPARATOR***
 
     PART 2: "✉️ Draft Reply"
+    - Generate a standard email draft.
+    - Use HYPHENS (-) for the list of questions.
+    - DO NOT use bullet points (•).
     - Intro: "Dear Client,\n\nThank you for your inquiry."
-    - Transition: "To provide you with an accurate quote, could you please clarify the following details:"
-    - Body: List questions using HYPHENS (-).
-      - Example: "- Passenger Count: Please confirm the exact number..."
-    - Closing: "We look forward to assisting you further."
+    - Transition: "To provide you with an accurate quote, could you please clarify:"
+    - Body: List questions using "- Question text".
 
     --- EMAIL TO AUDIT ---
     {text}
@@ -133,21 +134,22 @@ if audit_btn:
             if status == "SUCCESS":
                 st.success("Audit Complete")
                 
-                # Mēs sadalām atbildi divās daļās, izmantojot SEPARATOR
+                # Sadalām rezultātu
                 if "***SEPARATOR***" in result:
                     analysis_part, reply_part = result.split("***SEPARATOR***")
                     
-                    # 1. Daļa: Analīze (paliek krāsaina)
+                    # 1. Analīze (Markdown ar krāsām un numuriem)
                     st.markdown(analysis_part)
                     
                     st.markdown("---")
-                    st.subheader("✉️ Draft Reply (Ready to Copy)")
+                    st.subheader("✉️ Draft Reply")
                     
-                    # 2. Daļa: E-pasts (tiek parādīts kā kods - saglabā defises!)
-                    # .strip() noņem liekās atstarpes sākumā un beigās
-                    st.code(reply_part.replace('PART 2: "✉️ Draft Reply"', "").strip(), language=None)
+                    # Notīrām tekstu no virsrakstiem, lai paliek tikai e-pasts
+                    clean_reply = reply_part.replace('PART 2: "✉️ Draft Reply"', "").strip()
+                    
+                    # 2. E-pasts (Text Area - garantēts Plain Text ar defisēm)
+                    st.text_area("Copy this reply:", value=clean_reply, height=350)
                 else:
-                    # Ja separators netika atrasts (AI kļūda), parādām visu kā parasti
                     st.markdown(result)
             else:
                 st.error("Audit failed.")
