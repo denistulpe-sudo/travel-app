@@ -35,17 +35,23 @@ def audit_email(api_key, text):
     url = f"https://generativelanguage.googleapis.com/{api_version}/{model_path}:generateContent?key={api_key}"
     
     current_date_str = datetime.now().strftime('%A, %d.%m.%Y')
-    current_year_str = str(datetime.now().year)
+    current_year = datetime.now().year
     
-    # --- PROMPT WITH STRICT RULES ON ALL POINTS ---
+    # --- PROMPT WITH SMART DATE LOGIC ---
     prompt = f"""
     You are a professional logistics auditor. Analyze this inquiry STRICTLY against 8 requirements.
     Today's Date: {current_date_str}.
+    Current Year: {current_year}.
 
     --- STRICT ANALYSIS RULES ---
     1. Dates and Times: 
-       - Rule: Must include EXACT Date AND EXACT Time (Hour/Minute).
-       - Logic: "May 14th" (No time) -> :red[❌ Dates/Times: Specific pick-up time missing].
+       - Rule: Must include Day, Month, and Hour.
+       - Logic (Year): If Year is missing, ASSUME the next occurring date. 
+         - If month is ahead of today -> Assume {current_year}. 
+         - If month has passed -> Assume {current_year + 1}.
+         - Mark as :green[✅ Dates: (Assumed Year)].
+       - Logic (Time): Descriptive times like "8 in morning", "5pm", "noon" are VALID.
+         - Only mark :red[❌] if NO time indication is given at all (e.g., just "May 8th").
 
     2. Number of Passengers: 
        - Rule: Must be a specific number (e.g., "10 people").
@@ -126,7 +132,7 @@ if audit_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["audit_input"]: st.warning("Please paste an email.")
     else:
-        with st.spinner("Analyzing strictly..."):
+        with st.spinner("Auditing..."):
             status, result = audit_email(api_key, st.session_state["audit_input"])
             
             if status == "SUCCESS":
