@@ -39,58 +39,45 @@ def audit_email(api_key, text):
     
     # --- PROMPT ---
     prompt = f"""
-    You are a professional logistics auditor. Analyze this inquiry strictly against 8 requirements.
+    You are a professional logistics auditor. Analyze this inquiry strictly against 7+1 requirements.
     Today's Date: {current_date_str}.
 
-    --- 1. DATES & TIMES ---
-    - Rule: Must be exact.
-    - Logic: 
-      - If Month missing -> :red[❌ Dates: Missing Month].
-      - If Year missing -> :green[✅ Dates: (Assumed {current_year_str})].
-
-    --- 2. PASSENGER COUNT ---
-    - Rule: Must be a specific number.
-    - Logic: "8-seater" is NOT a pax count. Mark as :red[❌ Pax: Not specified].
-
-    --- 3. LOCATIONS ---
-    - Rule: Specific addresses or searchable landmarks.
-    - Logic: "Hotel in City Center" is Vague (:red[❌]). "Radisson Blu Riga" is Specific (:green[✅]).
-
-    --- 4. VEHICLE PREFERENCE ---
-    - Rule: Explicit or Implied.
-    - Logic: "Budget/Standard/Cheapest" -> :green[✅ Vehicle: Standard (Implied)]. No mention -> :red[❌ Vehicle: Type not specified].
-
-    --- 5. LUGGAGE (CONTEXTUAL INTELLIGENCE) ---
-    - Rule: Confirming luggage is mandatory for safety/weight, EXCEPT in 3 cases.
-    - Logic:
-      1. GREEN :green[✅]: If client explicitly stated count/size.
-      2. GREEN :green[✅]: If "Shuttle" service (Hotel <-> Restaurant/Gala).
-      3. GREEN :green[✅]: If "Day Sightseeing" (Loop tour).
-      4. RED :red[❌]: ALL Airport transfers (MANDATORY).
-      5. RED :red[❌]: ALL City-to-City transfers (MANDATORY).
-
-    --- 6. DURATION ---
-    - Rule: Necessary for tours. Point-to-Point -> :green[✅ N/A].
-
-    --- 7. EXTRAS ---
-    - Rule: Check for guides, stops, child seats.
-
-    --- 8. DRIVER ACCOMMODATION ---
-    - Rule: Only for multi-day overnight trips. Short trip -> :green[✅ N/A].
+    --- REQUIREMENTS & LOGIC ---
+    1. Dates and times: 
+       - If Month missing -> :red[❌]. If Year missing -> :green[✅ (Assumed {current_year_str})].
+    2. Number of passengers: 
+       - Must be specific number. "8-seater" is NOT a pax count -> :red[❌].
+    3. Pick-up and drop-off locations: 
+       - Vague/Ambiguous -> :red[❌]. Specific -> :green[✅].
+    4. Type of vehicle preferred: 
+       - "Budget/Standard/Cheapest" -> :green[✅ Standard (Implied)]. No mention -> :red[❌].
+    5. Luggage requirements: 
+       - MANDATORY for Airport & City-to-City transfers. 
+       - SKIP if "Shuttle" or "Sightseeing" (Contextual Intelligence).
+    6. Service duration: 
+       - Necessary for tours. Point-to-Point -> :green[✅ N/A].
+    7. Additional needs: 
+       - Guides, stops, child seats.
+    8. Driver accommodation: 
+       - Only for multi-day overnight trips. Short trip -> :green[✅ N/A].
 
     --- OUTPUT FORMAT ---
     PART 1: "📊 8-Point Logistics Audit"
     - Use a NUMBERED list (1., 2., 3.).
-    - Structure: "1. [Green/Red Icon] **[Requirement Name]**: [Result]"
+    - Structure: "1. [Green/Red Icon] **[Category Name]**: [Result]"
 
     ***SEPARATOR***
 
     PART 2: "✉️ Draft Reply"
     - Intro: "Dear Client,\n\nThank you for your inquiry."
     - Transition: "To provide you with an accurate quote, could you please clarify the following details:"
-    - Body: List questions using HYPHENS (-).
-    - Closing: "We look forward to hearing from you."
-    - NOTE: Do NOT add any specific context to the closing (e.g. do NOT say "regarding your tennis tour"). Keep it standard.
+    - Body: List the questions for MISSING (:red[❌]) items.
+    - STRICT LIST FORMAT: You must prefix the question with the category name.
+      - BAD: "- How many bags?"
+      - GOOD: "- Luggage requirements: Could you please specify the total number and size of luggage?"
+      - GOOD: "- Number of passengers: Please confirm the exact number of people traveling."
+      - GOOD: "- Pick-up location: Could you please provide the specific address?"
+    - Closing: "We look forward to hearing from you." (Do not add extra context).
 
     --- EMAIL TO AUDIT ---
     {text}
@@ -127,7 +114,7 @@ if audit_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["audit_input"]: st.warning("Please paste an email.")
     else:
-        with st.spinner("Analyzing logistics..."):
+        with st.spinner("Analyzing requirements..."):
             status, result = audit_email(api_key, st.session_state["audit_input"])
             
             if status == "SUCCESS":
