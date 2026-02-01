@@ -37,7 +37,7 @@ def audit_email(api_key, text):
     current_date_str = datetime.now().strftime('%A, %d.%m.%Y')
     current_year_str = str(datetime.now().year)
     
-    # --- PROMPT WITH STRUCTURED REPLY ---
+    # --- PROMPT AR SADALĪTĀJU (DELIMITER) ---
     prompt = f"""
     You are a professional logistics auditor. Analyze this inquiry strictly against 8 requirements.
     Today's Date: {current_date_str}.
@@ -83,10 +83,12 @@ def audit_email(api_key, text):
     - Use a NUMBERED list (1., 2., 3.).
     - Structure: "1. [Green/Red Icon] **[Requirement Name]**: [Result]"
 
+    ***SEPARATOR*** (Do not write anything else here)
+
     PART 2: "✉️ Draft Reply"
     - Intro: "Dear Client,\n\nThank you for your inquiry."
     - Transition: "To provide you with an accurate quote, could you please clarify the following details:"
-    - Body: List the questions for missing items (:red[❌]) using HYPHENS (-).
+    - Body: List questions using HYPHENS (-).
       - Example: "- Passenger Count: Please confirm the exact number..."
     - Closing: "We look forward to assisting you further."
 
@@ -127,9 +129,26 @@ if audit_btn:
     else:
         with st.spinner("Analyzing logistics..."):
             status, result = audit_email(api_key, st.session_state["audit_input"])
+            
             if status == "SUCCESS":
                 st.success("Audit Complete")
-                st.markdown(result)
+                
+                # Mēs sadalām atbildi divās daļās, izmantojot SEPARATOR
+                if "***SEPARATOR***" in result:
+                    analysis_part, reply_part = result.split("***SEPARATOR***")
+                    
+                    # 1. Daļa: Analīze (paliek krāsaina)
+                    st.markdown(analysis_part)
+                    
+                    st.markdown("---")
+                    st.subheader("✉️ Draft Reply (Ready to Copy)")
+                    
+                    # 2. Daļa: E-pasts (tiek parādīts kā kods - saglabā defises!)
+                    # .strip() noņem liekās atstarpes sākumā un beigās
+                    st.code(reply_part.replace('PART 2: "✉️ Draft Reply"', "").strip(), language=None)
+                else:
+                    # Ja separators netika atrasts (AI kļūda), parādām visu kā parasti
+                    st.markdown(result)
             else:
                 st.error("Audit failed.")
                 st.code(result)
