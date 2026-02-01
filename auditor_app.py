@@ -37,7 +37,7 @@ def audit_email(api_key, text):
     current_date_str = datetime.now().strftime('%A, %d.%m.%Y')
     current_year_str = str(datetime.now().year)
     
-    # --- PROMPT AR SEPARATORU ---
+    # --- PROMPT ---
     prompt = f"""
     You are a professional logistics auditor. Analyze this inquiry strictly against 8 requirements.
     Today's Date: {current_date_str}.
@@ -86,12 +86,11 @@ def audit_email(api_key, text):
     ***SEPARATOR***
 
     PART 2: "✉️ Draft Reply"
-    - Generate a standard email draft.
-    - Use HYPHENS (-) for the list of questions.
-    - DO NOT use bullet points (•).
     - Intro: "Dear Client,\n\nThank you for your inquiry."
-    - Transition: "To provide you with an accurate quote, could you please clarify:"
-    - Body: List questions using "- Question text".
+    - Transition: "To provide you with an accurate quote, could you please clarify the following details:"
+    - Body: List questions using HYPHENS (-).
+    - Closing: "We look forward to hearing from you."
+    - NOTE: Do NOT add any specific context to the closing (e.g. do NOT say "regarding your tennis tour"). Keep it standard.
 
     --- EMAIL TO AUDIT ---
     {text}
@@ -134,21 +133,18 @@ if audit_btn:
             if status == "SUCCESS":
                 st.success("Audit Complete")
                 
-                # Sadalām rezultātu
                 if "***SEPARATOR***" in result:
                     analysis_part, reply_part = result.split("***SEPARATOR***")
                     
-                    # 1. Analīze (Markdown ar krāsām un numuriem)
+                    # 1. Analīze (Krāsaina)
                     st.markdown(analysis_part)
                     
                     st.markdown("---")
                     st.subheader("✉️ Draft Reply")
                     
-                    # Notīrām tekstu no virsrakstiem, lai paliek tikai e-pasts
+                    # 2. E-pasts (Koda bloks - visdrošākais veids kopēšanai)
                     clean_reply = reply_part.replace('PART 2: "✉️ Draft Reply"', "").strip()
-                    
-                    # 2. E-pasts (Text Area - garantēts Plain Text ar defisēm)
-                    st.text_area("Copy this reply:", value=clean_reply, height=350)
+                    st.code(clean_reply, language=None)
                 else:
                     st.markdown(result)
             else:
