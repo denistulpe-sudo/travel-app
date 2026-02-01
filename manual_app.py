@@ -4,20 +4,20 @@ import json
 from datetime import datetime
 
 # --- PAGE SETUP ---
-st.set_page_config(page_title="OsaBus Process Assistant", page_icon="📘", layout="wide")
+st.set_page_config(page_title="OsaBus SOP Assistant", page_icon="📘", layout="wide")
 
-# --- INTERNAL MANUAL (PRE-LOADED) ---
-# This is the text you provided. You can update it here in the code if policies change.
+# --- FULL INTERNAL MANUAL ---
+# This contains the EXACT text you provided.
 DEFAULT_MANUAL = """
 CUSTOMER SERVICE MANUAL
 Updated: 26/01/2026 
 
 1. CRMs
 We have a total of 4 CRMs:
-COM CRM: info@osabus.com (Latvia, Netherlands, General)
-Spain CRM: info@osabus.es (Spain)
-German CRM: info@osabus.de (Germany)
-USA CRM: Used for proposals and invoices in USD (USA, Asia, LatAm)
+COM CRM: info@osabus.com (General)
+Spain CRM: info@osabus.es
+German CRM: info@osabus.de
+USA CRM: Used for proposals and invoices in USD
 
 2. Communication Channels
 Email: info@osabus.com, info@osabus.es, info@osabus.de 
@@ -26,68 +26,80 @@ Phone: +49 331 900 849 99 (General questions only. No consultations/changes via 
 3. Email Formatting
 - Use standard fonts. No emojis.
 - Subject line, Greeting, Body, Sign-off.
-- Use "Reply All" if client CC'd others. 
-- Do NOT "Reply All" if other bus companies are CC'd.
+- Use "Reply All" if client CC'd others (except other bus companies).
 - No ALL CAPS.
 
 4. Commission Guidelines
 - Regular: 20–25%
 - Travel professionals: 15%
-- High risk (Weddings/Stag): 25–35%
+- Weddings / Sports teams / Bachelor parties / High-risk bookings: 25–35%
 - Long tours (5+ days): 10%
-- Last-minute: 20–50%
-- USA/Canada: 10–20%
-- Minimum profit: €50
+- Last-minute requests: 20–50% (consult manager)
+- Asia: 20–30% + inform clients of currency exchange differences
+- USA/Canada: 10–20% due to high rates
+- Minimum profit: €50 for small deals (applies to all countries)
 
-5. VAT / INVOICES RULES
-- General Rule: All proposals start with 0% VAT in COM CRM.
-- Latvia Service (COM CRM): 21% VAT.
-- Spain Service (SPAIN CRM): Spanish VAT.
-- Germany Service (DE CRM): 19% VAT.
-- Netherlands Service (COM CRM): 9% VAT.
-- Private Individual (EU Registered): Apply VAT of service country.
-- Company (EU Registered): 0% VAT (Reverse Charge).
-- Non-EU Client: 0% VAT.
+5. VAT / INVOICES
+General Rule (Always Start Here)
+- All proposals are initially created with 0% VAT in COM CRM.
+- VAT is reviewed and applied only at the invoicing stage.
+- Proposals/invoices in SPAIN CRM and DE CRM are always issued with VAT according to local rules.
 
-6. Creating a Proposal (CRM Steps)
-1. Check if customer exists. If new (WordPress email), create new customer.
-2. Go to Proposals -> New Proposal.
-3. Add item details (dates, pax, luggage, start location).
-4. Subject: Start day + City.
-5. Save. Proposal stays in DRAFT until supplier quote is received.
+Where the Service Takes Place (CRM & VAT):
+- Latvia → Use COM CRM → 21% VAT
+- Spain → Use SPAIN CRM → Apply Spanish VAT
+- Germany → Use DE CRM → 19% VAT
+- Netherlands → COM CRM → 9% VAT
+- COM CRM Rules:
+  - Legal entity (company) → 0% VAT
+  - Private individual, EU registered → Apply VAT of the service country
+  - Private individual, NOT EU registered → 0% VAT
 
-7. Purchase Requests (Sourcing Suppliers)
-1. Inside Proposal, click CONVERT -> PURCHASE REQUEST.
-2. Select Vendors based on city/pax.
-3. Save (Do not "Save and Send" yet).
-4. Copy the "Vendor Link".
-5. Email supplier from operations1@osagroup.ltd with the link.
-6. When supplier quotes, approve the best quote in the system.
-7. Update proposal price based on approved quote + 15% margin.
+6. Purchase Requests (Sourcing)
+- Once proposal created -> Press CONVERT -> PURCHASE REQUEST.
+- Select vendors based on city/pax.
+- Save (Do not "Save and Send").
+- Copy the link.
+- Email supplier from operations1@osagroup.ltd with the link.
+- Subject: Proposal number + Subject.
+- Once supplier quotes, approve the best quote in system.
+- Update proposal price (Quote + 15% commission usually).
 
-8. Invoicing
-1. Update Customer Details (VAT, Address, Group type).
-2. Convert Proposal -> Invoice.
-3. Select Payment: Stripe (+3% fee) or Bank Transfer.
-4. Fill in: Dispo number, Driver details, Flight info.
-5. Save and Send to customer.
-6. Payment terms: 30% deposit, balance 48 days prior.
+7. Purchase Order (CONFIRMING SUPPLIER)
+- Once you receive payment from client, go to the Purchase Request.
+- Make a PURCHASE ORDER to the supplier to confirm the offer.
+- Check details (flight number, etc).
+- Copy the Purchase Order link and email it to the supplier for confirmation.
+
+8. Invoicing & Receiving Payments
+- Convert Proposal to Invoice.
+- Payment Options: Bank Transfer (Preferred) or Credit Card (+3% fee).
+- Fill in Group details, Driver details, Flight details.
+- Terms: Full payment required. 30% deposit to secure, balance 48 days prior.
+
+RECEIVING PAYMENTS (What to do next):
+- Payments are recorded automatically (Status changes to "Paid").
+- Send "Thank You" email to client:
+  "Thank you for choosing OsaBus! The payment has been received and the booking is confirmed. The driver's details will be provided the evening before the trip."
+- If only Deposit paid:
+  "Thank you, the deposit payment has been received, and the booking is confirmed. The rest of the payment is due to XX.XX.XXXX." (Update invoice due date).
 
 9. Supplier Invoices & Expenses
-1. Open the Client Invoice.
-2. Click MORE -> ADD EXPENSE.
-3. Select Vendor.
-4. Enter Amount and Upload Supplier Invoice.
-5. Status: Ready for Payment.
-6. Email zane.cunska@connect2trip.com with the expense link.
+- We pay suppliers approx 1 month before service (or 20-30% deposit if requested).
+- Open Client Invoice -> More -> Add Expense.
+- Select Vendor.
+- Enter Amount & Upload Supplier Invoice.
+- Status: Ready for Payment.
+- Email zane.cunska@connect2trip.com with the expense link.
 
 10. Refund Policy
 - Requires Credit Note.
-- Refund fee for credit cards: €35 (covered by client).
+- Create Credit Note in system.
 - Send details (IBAN, SWIFT) to Zane.
+- Credit Card refund fee: €35 (covered by client).
 
 11. Blacklisted Suppliers
-(Do not use: Vienna Connection Cab, Global bus rental, Eg Reisen, Zonetransfers, etc - refer to full list in manual).
+(Do not use: Vienna Connection Cab, Global bus rental, Eg Reisen, Zonetransfers, etc).
 
 12. Email Sorting
 - Germany internal -> DE CRM.
@@ -103,6 +115,7 @@ Phone: +49 331 900 849 99 (General questions only. No consultations/changes via 
 - Max drive/day: 9h (ext to 10h twice/week).
 - Max work/day: 12h (ext to 15h).
 - Break: 45min after 4.5h driving.
+- Rest: 11h between shifts.
 
 15. Vacation Policy
 - Min 2 weeks/year (1 week summer, 1 week winter).
@@ -120,7 +133,7 @@ with st.sidebar:
     with st.expander("View/Edit Manual Text"):
         manual_text = st.text_area("Current Manual:", value=DEFAULT_MANUAL, height=300)
     
-    st.info("The app is pre-loaded with the OsaBus Customer Service Manual (Updated 26/01/2026).")
+    st.info("The app is pre-loaded with the OsaBus Customer Service Manual.")
     
     if st.button("Clear Chat History"):
         st.session_state.messages = []
@@ -161,8 +174,8 @@ def ask_manual(api_key, manual, question):
     --- INSTRUCTIONS ---
     1. Answer strictly based on the manual.
     2. Provide STEP-BY-STEP instructions.
-    3. VISUALS: If the step involves using the CRM, specific forms, or looking at a specific document, INSERT A VISUAL TAG like  or  at the relevant step.
-    4. REFERENCE: Mention the Section Name (e.g., "See Section 'VAT / INVOICES'").
+    3. VISUALS: If the step involves using the CRM, specific forms, or looking at a specific document, INSERT A VISUAL TAG like  at the relevant step.
+    4. REFERENCE: Mention the Section Name (e.g., "See Section 'Receiving payments'").
     5. If the answer is not in the manual, say "I cannot find this in the OsaBus manual."
 
     """
@@ -182,7 +195,7 @@ st.markdown("Ask questions about **Invoices, VAT, CRM Steps, or Supplier Policie
 
 # Initialize chat history
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Hello! I have the OsaBus manual memorized. How can I help you today? (e.g., 'How do I add an expense?' or 'What is the VAT for a trip in Germany?')"}]
+    st.session_state.messages = [{"role": "assistant", "content": "Hello! I have the OsaBus manual memorized. How can I help you today? (e.g., 'Client paid, what next?' or 'How do I create a Purchase Order?') "}]
 
 # Display chat messages
 for message in st.session_state.messages:
