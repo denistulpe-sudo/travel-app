@@ -37,7 +37,7 @@ def audit_email(api_key, text):
     current_date_str = datetime.now().strftime('%A, %d.%m.%Y')
     current_year = datetime.now().year
     
-    # --- PROMPT WITH SMART DATE LOGIC ---
+    # --- PROMPT WITH SPLIT DATE/TIME LOGIC ---
     prompt = f"""
     You are a professional logistics auditor. Analyze this inquiry STRICTLY against 8 requirements.
     Today's Date: {current_date_str}.
@@ -46,41 +46,39 @@ def audit_email(api_key, text):
     --- STRICT ANALYSIS RULES ---
     1. Dates and Times: 
        - Rule: Must include Day, Month, and Hour.
-       - Logic (Year): If Year is missing, ASSUME the next occurring date. 
-         - If month is ahead of today -> Assume {current_year}. 
-         - If month has passed -> Assume {current_year + 1}.
-         - Mark as :green[✅ Dates: (Assumed Year)].
-       - Logic (Time): Descriptive times like "8 in morning", "5pm", "noon" are VALID.
-         - Only mark :red[❌] if NO time indication is given at all (e.g., just "May 8th").
+       - Logic (Year): If Year missing -> Assume next occurrence ({current_year} or {current_year + 1}). Mark as :green[✅].
+       - Logic (Time): 
+         - If Dates are present but TIME is missing -> :red[❌ Pick-up Times: Specific time missing].
+         - If Dates AND Time are missing -> :red[❌ Dates & Times: Missing].
+         - If valid -> :green[✅ Dates & Times: Specific].
 
     2. Number of Passengers: 
-       - Rule: Must be a specific number (e.g., "10 people").
-       - Logic: "A group", "The team", "Full bus" -> :red[❌ Number of passengers: Exact count missing].
+       - Rule: Must be a specific number.
+       - Logic: "30 students + 3 profs" = 33 pax -> :green[✅].
+       - "Group" or "Bus needed" -> :red[❌ Number of passengers: Exact count missing].
 
     3. Pick-up and Drop-off Locations: 
-       - Rule: Must be a specific Hotel Name, Airport, or Street Address.
-       - Logic: "Romantic Zone", "City Center", "The Hotel", "Airbnb" -> :red[❌ Locations: Specific hotel name/address missing].
+       - Rule: Must be a specific Hotel Name, Airport, or Address.
+       - Logic: "Hotel Ibis Tallin" -> :green[✅].
+       - "Hotel in Riga" -> :red[❌ Locations: Specific hotel name missing].
 
     4. Type of Vehicle Preferred: 
-       - Rule: Must specify type (Van, Sedan) or Class (Budget, Luxury).
-       - Logic: If completely omitted -> :red[❌ Type of vehicle: Not specified].
-       - Exception: If "Budget/Cheapest" mentioned -> :green[✅ Standard (Implied)].
+       - Rule: Must specify type (Van, Sedan) or Class.
+       - Logic: If omitted -> :red[❌ Type of vehicle: Not specified].
 
     5. Luggage Requirements: 
-       - Rule: Mandatory for ALL Airport, Port, & City-to-City transfers.
-       - Logic: If missing in these contexts -> :red[❌ Luggage requirements: Count/Size missing].
-       - Exception: Only Green if "Shuttle" (Dinner/Conference) or "Sightseeing" loop.
+       - Rule: Mandatory for Airport & City-to-City transfers.
+       - Logic: If missing -> :red[❌ Luggage requirements: Count/Size missing].
 
     6. Service Duration: 
        - Rule: Mandatory for Hourly Disposal/Tours.
-       - Logic: "Tour of the city" (No hours) -> :red[❌ Service duration: Number of hours missing].
+       - Logic: Point-to-Point transfers -> :green[✅ N/A (Transfer)].
 
     7. Additional Needs: 
-       - Rule: Check for Guides, Child Seats, Special requests.
+       - Rule: Check for Guides, Child Seats.
 
     8. Driver Accommodation: 
-       - Rule: Mandatory check for Multi-day Overnight trips.
-       - Logic: If trip spans multiple days/cities and accom not mentioned -> :red[❌ Driver accommodation: Not confirmed].
+       - Rule: Check for Multi-day Overnight trips.
 
     --- OUTPUT FORMAT ---
     PART 1: "📊 8-Point Logistics Audit"
@@ -92,9 +90,10 @@ def audit_email(api_key, text):
     PART 2: "✉️ Draft Reply"
     - Intro: "Dear Client,\n\nThank you for your inquiry."
     - Transition: "To provide you with an accurate quote, could you please clarify the following details:"
-    - Body: List the questions for MISSING (:red[❌]) items.
-    - LIST FORMAT: "- [Category Name]: [Specific Question]"
-      - Example: "- Pick-up location: Could you please provide the specific hotel name and address?"
+    - Body: List questions for MISSING (:red[❌]) items.
+    - DYNAMIC CATEGORIES:
+      - If only TIME is missing, write: "- Pick-up Times: Could you please specify the exact pick-up times for..."
+      - Do NOT write "Dates and Times" if the dates are already there.
     - Closing: "We look forward to hearing from you."
 
     --- EMAIL TO AUDIT ---
