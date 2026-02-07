@@ -41,23 +41,16 @@ def generate_supplier_email(api_key, client_text):
     Task: Convert the following CLIENT REQUEST into a professional SUPPLIER INQUIRY.
     
     --- RULES ---
-    1. TONE: Direct, professional, and operational. Remove all client "fluff" (e.g., "We are so excited", "My grandmother walks slowly").
+    1. TONE: Direct, professional, and operational. Remove all client "fluff".
     2. GOAL: Ask the supplier if the request is possible and what the EXTRA COST is.
-    3. FORMATTING:
-       - Start with "Hello Team," or "Dear Partners,"
-       - State the request clearly: "The client has requested [Item/Service] for this trip."
-       - Ask specific questions: "Can you provide this? What is the total cost?"
-    4. MISSING INFO:
-       - If the client doesn't specify a number (e.g., "water for everyone"), use a placeholder like [Number of Pax].
-       - If the client doesn't specify a time, use [Time].
-    5. LANGUAGE: Write the email in English (standard business English).
-
-    --- EXAMPLES ---
-    Input: "Can we have some water on the bus?"
-    Output: "The client has requested bottled water for the passengers. Could you please provide this? If so, what would be the total cost for [Number] bottles?"
-
-    Input: "We need to stop for 2 hours in Brno on the way."
-    Output: "The client requests an additional 2-hour stop in Brno during the transfer. Is this possible with the current driver's hours? Please confirm the additional cost for this stop."
+    3. STRUCTURE:
+       - Start with: "Hello!" or "Hello Team,"
+       - Body: State the request clearly (e.g., "The client has requested...").
+       - Question: "Is this possible? What is the total extra cost?"
+       - End with: "Looking forward to your response." followed by "Best regards,"
+    4. UNKNOWNS:
+       - If numbers/times are missing, use placeholders like [Number] or [Time].
+    5. FORMAT: Use standard paragraphs (no code blocks).
 
     --- CLIENT EMAIL INPUT ---
     {client_text}
@@ -77,9 +70,9 @@ def clear_input():
 
 # --- UI ---
 st.title("🚌 Client-to-Supplier Translator")
-st.markdown("Paste a client's request (e.g., extra stops, water, child seats), and I will draft a professional email to the bus company.")
+st.markdown("Paste the client's request below. I will rewrite it for the bus company.")
 
-client_input = st.text_area("Paste Client Request Here:", height=200, key="client_input")
+client_input = st.text_area("Paste Client Request Here:", height=150, key="client_input")
 
 col1, col2 = st.columns([1, 4])
 with col1:
@@ -96,8 +89,9 @@ if translate_btn:
             
             if status == "SUCCESS":
                 st.subheader("✉️ Message to Supplier")
-                st.code(result, language=None)
-                st.success("You can copy this directly into your dispatch email.")
+                # Using text_area instead of code block ensures text wraps and doesn't scroll sideways
+                st.text_area("Copy this text:", value=result, height=250)
+                st.success("Draft ready! You can edit the text above before copying.")
             else:
                 st.error("Error generating email.")
-                st.code(result)
+                st.write(result)
