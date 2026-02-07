@@ -1,7 +1,6 @@
 import streamlit as st
 import requests
 import json
-from datetime import datetime
 
 # --- PAGE SETUP ---
 st.set_page_config(page_title="OsaBus Comm Translator", page_icon="↔️", layout="centered")
@@ -11,7 +10,7 @@ with st.sidebar:
     st.header("Settings")
     api_key = st.text_input("Google API Key", type="password")
     st.divider()
-    st.info("↔️ Two-Way Translator\n\nTab 1: Client -> Supplier (Operational)\nTab 2: Supplier -> Client (Polite & Unified)")
+    st.info("↔️ **Two-Way Translator**\n\n**Tab 1:** You ask Supplier for things (Direct).\n**Tab 2:** You give news to Client (Polite & Unified).")
 
 # --- FUNCTIONS ---
 def get_available_model(api_key):
@@ -50,7 +49,7 @@ def generate_translation(api_key, input_text, mode):
            - Start: "Hello!"
            - Body: "The client has requested..."
            - Question: "Is this possible? What is the extra cost?"
-           - End: "Looking forward to your response." / "Best regards,"
+           - End: "Looking forward to your response."
         """
         
     else: # supplier_to_client
@@ -63,8 +62,8 @@ def generate_translation(api_key, input_text, mode):
         
         Rules:
         1. IDENTITY PROTECTION (CRITICAL):
-           - NEVER say "the supplier", "the transport provider", or "the driver".
-           - ALWAYS attribute decisions/info to "our planning team", "our operations department", or "we".
+           - NEVER say "the supplier", "the transport provider", or "the driver" made a decision.
+           - ALWAYS attribute info to "our planning team", "our operations department", or "we".
            
         2. Tone: Very polite, professional, apologetic (if bad news), helpful.
         
@@ -72,12 +71,9 @@ def generate_translation(api_key, input_text, mode):
            - Start: "Dear Client,"
            - Context: "Regarding your request for..."
            - The Update: Rephrase the info nicely.
-             - Bad Example: "Driver said no."
-             - Good Example: "Our planning team has informed me that this request cannot be accommodated."
-             - Bad Example: "Supplier wants 50 euro."
-             - Good Example: "Our operations department has confirmed this is possible for an additional fee of 50 EUR."
+             - Bad Example: "Driver said no." -> Good: "Our planning team has informed me that this request cannot be accommodated due to..."
            - Next Step: "Please let us know if you would like to proceed."
-           - End: "Best regards," / "OsaBus Team"
+           - End: "Best regards, OsaBus Team"
         """
 
     data = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -89,10 +85,6 @@ def generate_translation(api_key, input_text, mode):
         else: return "ERROR", f"Google Error {response.status_code}"
     except Exception as e: return "ERROR", str(e)
 
-def clear_input():
-    st.session_state["c_input"] = ""
-    st.session_state["s_input"] = ""
-
 # --- UI ---
 st.title("↔️ OsaBus Comm Translator")
 
@@ -101,7 +93,7 @@ tab1, tab2 = st.tabs(["Client ➡ Supplier", "Supplier ➡ Client"])
 
 # --- TAB 1: CLIENT TO SUPPLIER ---
 with tab1:
-    st.markdown("Use this when the client asks for weird stuff (water, stops, decorations).")
+    st.markdown("Use this when the client asks for extra items/stops.")
     c_text = st.text_area("Client's Request:", height=150, key="c_input")
     
     if st.button("Draft Supplier Email", type="primary"):
@@ -116,9 +108,9 @@ with tab1:
 
 # --- TAB 2: SUPPLIER TO CLIENT ---
 with tab2:
-    st.markdown("Use this when the supplier gives an answer (price, refusal, etc.).")
+    st.markdown("Use this when the supplier gives an answer (price, refusal, restrictions).")
     s_text = st.text_area("Supplier's Rough Reply:", height=150, key="s_input", 
-                           placeholder="Example: 'No water. Driver busy. Extra stop 50 eur.'")
+                           placeholder="Example: 'No parking here. Police will fine me. Must be quick.'")
     
     if st.button("Draft Client Email", type="primary"):
         if not api_key: st.error("Add API Key in sidebar")
