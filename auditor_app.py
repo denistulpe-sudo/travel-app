@@ -37,64 +37,63 @@ def audit_email(api_key, text):
     current_date_str = datetime.now().strftime('%A, %d.%m.%Y')
     current_year = datetime.now().year
     
-    # --- PROMPT WITH SPLIT DATE/TIME LOGIC ---
+    # --- PROMPT WITH SMART CONTEXT & CONCISE REPLY ---
     prompt = f"""
-    You are a professional logistics auditor. Analyze this inquiry STRICTLY against 8 requirements.
+    You are a professional logistics auditor. Analyze this inquiry.
     Today's Date: {current_date_str}.
     Current Year: {current_year}.
 
-    --- STRICT ANALYSIS RULES ---
-    1. Dates and Times: 
-       - Rule: Must include Day, Month, and Hour.
-       - Logic (Year): If Year missing -> Assume next occurrence ({current_year} or {current_year + 1}). Mark as :green[✅].
-       - Logic (Time): 
-         - If Dates are present but TIME is missing -> :red[❌ Pick-up Times: Specific time missing].
-         - If Dates AND Time are missing -> :red[❌ Dates & Times: Missing].
-         - If valid -> :green[✅ Dates & Times: Specific].
+    --- ANALYSIS RULES (STRICT AUDIT VS PRAGMATIC REPLY) ---
+    
+    1. Dates & Times:
+       - Logic: Dates present but Time missing? -> Audit: :red[❌ Pick-up Time]. Reply: ASK.
+       - Logic: Dates missing? -> Audit: :red[❌ Dates]. Reply: ASK.
 
-    2. Number of Passengers: 
-       - Rule: Must be a specific number.
-       - Logic: "30 students + 3 profs" = 33 pax -> :green[✅].
-       - "Group" or "Bus needed" -> :red[❌ Number of passengers: Exact count missing].
+    2. Passenger Count (Smart Logic):
+       - Exact ("30 pax") -> Audit: :green[✅]. Reply: SKIP.
+       - Estimate ("up to 10", "approx 15") -> Audit: :orange[⚠️ Estimated]. Reply: SKIP (Do not ask, unless completely missing).
+       - Missing ("Group", "Bus needed") -> Audit: :red[❌]. Reply: ASK.
 
-    3. Pick-up and Drop-off Locations: 
-       - Rule: Must be a specific Hotel Name, Airport, or Address.
-       - Logic: "Hotel Ibis Tallin" -> :green[✅].
-       - "Hotel in Riga" -> :red[❌ Locations: Specific hotel name missing].
+    3. Locations:
+       - Logic: Specific Hotel/Address -> :green[✅].
+       - Logic: Vague ("Hotel in Riga") -> :red[❌ Specific Address]. Reply: ASK.
 
-    4. Type of Vehicle Preferred: 
-       - Rule: Must specify type (Van, Sedan) or Class.
-       - Logic: If omitted -> :red[❌ Type of vehicle: Not specified].
+    4. Vehicle:
+       - Logic: Explicit or Implied (Budget/Standard) -> :green[✅]. Missing -> :red[❌]. Reply: ASK.
 
-    5. Luggage Requirements: 
-       - Rule: Mandatory for Airport & City-to-City transfers.
-       - Logic: If missing -> :red[❌ Luggage requirements: Count/Size missing].
+    5. Luggage (Contextual Skip):
+       - ASK IF: Airport Transfer, City-to-City, Multi-day Tour.
+       - SKIP IF: Dinner transfer, Wedding shuttle, School day trip, Nightlife/Party.
+       - Logic: If context suggests "Dinner/Wedding/School/Party" -> Audit: :green[✅ N/A (Context)]. Reply: SKIP.
 
-    6. Service Duration: 
-       - Rule: Mandatory for Hourly Disposal/Tours.
-       - Logic: Point-to-Point transfers -> :green[✅ N/A (Transfer)].
+    6. Itinerary/Stops (Contextual Skip):
+       - ASK IF: Sightseeing Tour, "Disposal" service.
+       - SKIP IF: Point-to-Point Transfer, Airport Transfer, Shuttle Loop.
 
-    7. Additional Needs: 
-       - Rule: Check for Guides, Child Seats.
+    7. Flight Numbers:
+       - ASK IF: Airport Pick-up.
+       - SKIP IF: Airport Drop-off, Train Station, City Transfer.
 
-    8. Driver Accommodation: 
-       - Rule: Check for Multi-day Overnight trips.
+    8. Driver Accommodation:
+       - ASK IF: Multi-day tour away from base city.
+       - SKIP IF: Single-day service (Start/End same day), Local transfers (even if multi-day).
 
     --- OUTPUT FORMAT ---
-    PART 1: "📊 8-Point Logistics Audit"
-    - Use a NUMBERED list (1., 2., 3.).
-    - Structure: "1. [Green/Red Icon] **[Category Name]**: [Result]"
+    PART 1: "📊 Logistics Audit"
+    - List the status of requirements using :green[✅], :orange[⚠️], :red[❌].
+    - Be brief.
 
     ***SEPARATOR***
 
     PART 2: "✉️ Draft Reply"
+    - Tone: Professional, polite, but VERY CONCISE.
+    - Rule: Do not write long paragraphs. 
     - Intro: "Dear Client,\n\nThank you for your inquiry."
-    - Transition: "To provide you with an accurate quote, could you please clarify the following details:"
-    - Body: List questions for MISSING (:red[❌]) items.
-    - DYNAMIC CATEGORIES:
-      - If only TIME is missing, write: "- Pick-up Times: Could you please specify the exact pick-up times for..."
-      - Do NOT write "Dates and Times" if the dates are already there.
-    - Closing: "We look forward to hearing from you."
+    - Body: "To provide an accurate quote, could you please clarify:"
+    - List: Bullet points ONLY for the :red[❌] items (and :red[❌] Time).
+    - EXCEPTION: Do NOT ask for "Passengers" if Audit is :orange[⚠️ Estimated].
+    - EXCEPTION: Do NOT ask for "Luggage" if Context is Dinner/Wedding/School.
+    - Closing: "Best regards,"
 
     --- EMAIL TO AUDIT ---
     {text}
@@ -115,7 +114,7 @@ def clear_audit_input():
 
 # --- UI ---
 st.title("🔍 Email Inquiry Auditor")
-st.markdown("Highlights met requirements in :green[Green] and missing ones in :red[Red].")
+st.markdown("Highlights met requirements in :green[Green], estimates in :orange[Orange], missing in :red[Red].")
 
 email_input = st.text_area("Paste the customer's email here:", 
                            height=300, 
@@ -131,7 +130,7 @@ if audit_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["audit_input"]: st.warning("Please paste an email.")
     else:
-        with st.spinner("Auditing..."):
+        with st.spinner("Analyzing Logistics & Context..."):
             status, result = audit_email(api_key, st.session_state["audit_input"])
             
             if status == "SUCCESS":
@@ -146,7 +145,7 @@ if audit_btn:
                     st.markdown("---")
                     st.subheader("✉️ Draft Reply")
                     
-                    # 2. Reply Part (Clean code block)
+                    # 2. Reply Part
                     clean_reply = reply_part.replace('PART 2: "✉️ Draft Reply"', "").strip()
                     st.code(clean_reply, language=None)
                 else:
