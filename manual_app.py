@@ -11,7 +11,7 @@ with st.sidebar:
     st.header("Settings")
     api_key = st.text_input("Google API Key", type="password")
     st.divider()
-    st.info("🔄 Two-Way Translator\n\nTab 1: Ask Supplier for things.\nTab 2: Give bad/good news to Client.")
+    st.info("↔️ Two-Way Translator\n\nTab 1: Client -> Supplier (Operational)\nTab 2: Supplier -> Client (Polite & Unified)")
 
 # --- FUNCTIONS ---
 def get_available_model(api_key):
@@ -36,7 +36,7 @@ def generate_translation(api_key, input_text, mode):
     
     # --- PROMPTS ---
     if mode == "client_to_supplier":
-        # OPERATIONAL TONE
+        # OPERATIONAL TONE (Direct)
         prompt = f"""
         You are a Logistics Dispatcher.
         Task: Convert this CLIENT REQUEST into a SUPPLIER INQUIRY.
@@ -54,22 +54,28 @@ def generate_translation(api_key, input_text, mode):
         """
         
     else: # supplier_to_client
-        # POLITE CUSTOMER SERVICE TONE
+        # POLITE "PLANNING TEAM" TONE
         prompt = f"""
         You are a Customer Service Agent for OsaBus.
-        Task: Convert this ROUGH SUPPLIER UPDATE into a POLITE CLIENT EMAIL.
+        Task: Convert this ROUGH UPDATE into a POLITE CLIENT EMAIL.
         
         Input Text: "{input_text}"
         
         Rules:
-        1. Tone: Very polite, professional, apologetic (if bad news), helpful.
-        2. Goal: Inform the client clearly without sounding rude or blaming the driver.
+        1. IDENTITY PROTECTION (CRITICAL):
+           - NEVER say "the supplier", "the transport provider", or "the driver".
+           - ALWAYS attribute decisions/info to "our planning team", "our operations department", or "we".
+           
+        2. Tone: Very polite, professional, apologetic (if bad news), helpful.
+        
         3. Structure:
            - Start: "Dear Client,"
            - Context: "Regarding your request for..."
-           - The Update: Rephrase the supplier's text nicely.
-             - Example: "Driver says no" -> "Unfortunately, the transport provider has informed us that this request cannot be accommodated."
-             - Example: "50 euro extra" -> "The transport provider can arrange this for an additional fee of 50 EUR."
+           - The Update: Rephrase the info nicely.
+             - Bad Example: "Driver said no."
+             - Good Example: "Our planning team has informed me that this request cannot be accommodated."
+             - Bad Example: "Supplier wants 50 euro."
+             - Good Example: "Our operations department has confirmed this is possible for an additional fee of 50 EUR."
            - Next Step: "Please let us know if you would like to proceed."
            - End: "Best regards," / "OsaBus Team"
         """
@@ -84,41 +90,42 @@ def generate_translation(api_key, input_text, mode):
     except Exception as e: return "ERROR", str(e)
 
 def clear_input():
-    st.session_state["input_text"] = ""
+    st.session_state["c_input"] = ""
+    st.session_state["s_input"] = ""
 
 # --- UI ---
 st.title("↔️ OsaBus Comm Translator")
 
-# TABS FOR MODES
+# TABS
 tab1, tab2 = st.tabs(["Client ➡ Supplier", "Supplier ➡ Client"])
 
 # --- TAB 1: CLIENT TO SUPPLIER ---
 with tab1:
     st.markdown("Use this when the client asks for weird stuff (water, stops, decorations).")
-    c_input = st.text_area("Client's Request:", height=150, key="c_input")
+    c_text = st.text_area("Client's Request:", height=150, key="c_input")
     
     if st.button("Draft Supplier Email", type="primary"):
         if not api_key: st.error("Add API Key in sidebar")
-        elif not c_input: st.warning("Paste text first")
+        elif not c_text: st.warning("Paste text first")
         else:
-            with st.spinner("Translating to Dispatch-Speak..."):
-                status, res = generate_translation(api_key, c_input, "client_to_supplier")
+            with st.spinner("Drafting for Dispatch..."):
+                status, res = generate_translation(api_key, c_text, "client_to_supplier")
                 if status == "SUCCESS":
                     st.text_area("Copy for Supplier:", value=res, height=250)
                 else: st.error(res)
 
 # --- TAB 2: SUPPLIER TO CLIENT ---
 with tab2:
-    st.markdown("Use this when the supplier replies with short/rude text.")
-    s_input = st.text_area("Supplier's Rough Reply:", height=150, key="s_input", 
+    st.markdown("Use this when the supplier gives an answer (price, refusal, etc.).")
+    s_text = st.text_area("Supplier's Rough Reply:", height=150, key="s_input", 
                            placeholder="Example: 'No water. Driver busy. Extra stop 50 eur.'")
     
     if st.button("Draft Client Email", type="primary"):
         if not api_key: st.error("Add API Key in sidebar")
-        elif not s_input: st.warning("Paste text first")
+        elif not s_text: st.warning("Paste text first")
         else:
-            with st.spinner("Polishing for Client..."):
-                status, res = generate_translation(api_key, s_input, "supplier_to_client")
+            with st.spinner("Drafting for Client (Using 'Planning Team' persona)..."):
+                status, res = generate_translation(api_key, s_text, "supplier_to_client")
                 if status == "SUCCESS":
                     st.text_area("Copy for Client:", value=res, height=250)
                 else: st.error(res)
