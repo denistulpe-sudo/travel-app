@@ -11,7 +11,7 @@ with st.sidebar:
     st.header("Settings")
     api_key = st.text_input("Google API Key", type="password")
     st.divider()
-    st.info("↔️ Two-Way Translator\n\nTab 1: Client -> Supplier (Operational)\nTab 2: Supplier -> Client (Pro Solutions)")
+    st.info("↔️ Two-Way Translator\n\nTab 1: Client -> Supplier (Operational)\nTab 2: Supplier -> Client (Polite & Unified)")
 
 # --- FUNCTIONS ---
 def get_available_model(api_key):
@@ -36,7 +36,7 @@ def generate_translation(api_key, input_text, mode):
     
     # --- PROMPTS ---
     if mode == "client_to_supplier":
-        # OPERATIONAL TONE
+        # OPERATIONAL TONE (Direct)
         prompt = f"""
         You are a Logistics Dispatcher.
         Task: Convert this CLIENT REQUEST into a SUPPLIER INQUIRY.
@@ -54,33 +54,30 @@ def generate_translation(api_key, input_text, mode):
         """
         
     else: # supplier_to_client
-        # PRO LOGISTICS PROBLEM SOLVER
+        # POLITE "PLANNING TEAM" TONE
         prompt = f"""
-        You are a Senior Logistics Manager for OsaBus.
-        Task: Synthesize the Supplier's constraint into a Professional Client Solution.
+        You are a Customer Service Agent for OsaBus.
+        Task: Convert this ROUGH UPDATE into a POLITE CLIENT EMAIL.
         
-        Input Text (from Supplier): "{input_text}"
+        Input Text: "{input_text}"
         
-        --- CRITICAL RULES ---
-        1. IDENTITY: 
-           - NEVER say "supplier", "driver", or "provider". 
-           - Attribution: "Our planning team", "Local traffic regulations", "City authorities".
+        Rules:
+        1. IDENTITY PROTECTION (CRITICAL):
+           - NEVER say "the supplier", "the transport provider", or "the driver".
+           - ALWAYS attribute decisions/info to "our planning team", "our operations department", or "we".
+           
+        2. Tone: Very polite, professional, apologetic (if bad news), helpful.
         
-        2. PROBLEM SOLVING (The "Split Scenario" Logic):
-           - If supplier says "No parking" or "Can't stop" -> Explain it as "Strict local traffic regulations".
-           - If supplier says "I will get a fine" -> Explain it as "Police monitor this area closely".
-           - If supplier offers a bad alternative (walking far) -> Mention it as a last resort, but prioritize the "Quick Stop" solution.
-
-        3. STRUCTURE & TONE:
+        3. Structure:
            - Start: "Dear Client,"
-           - Confirmation: Confirm the time/date first.
-           - The "Constraint": Explain WHY there is an issue (Rules/Safety).
-           - The "Solution": Use Bullet Points to tell them how to handle it (e.g., "Be ready 5 mins early", "Active boarding only").
-           - End: "Best regards, OsaBus Team"
-
-        --- EXAMPLE TRAINING ---
-        Input: "No parking at Riva. Only 1 minute stop or police fine. Other parking is 150eur extra."
-        Output: "Regarding the location on the Riva: Local traffic regulations are very strict. Minibuses are permitted to stop for only one minute for active boarding. To ensure a smooth departure: 1. Please ensure the group is ready at the curb. 2. The driver will pull up exactly at the scheduled time."
+           - Context: "Regarding your request for..."
+           - The Update: Rephrase the info nicely.
+             - Bad Example: "Driver said no."
+             - Good Example: "Our planning team has informed me that this request cannot be accommodated."
+             - Bad Example: "Supplier wants 50 euro."
+             - Good Example: "Our operations department has confirmed this is possible for an additional fee of 50 EUR."
+           - Next Step: "Please let us know if you would like to proceed."
+           - End: "Best regards," / "OsaBus Team"
         """
 
     data = {"contents": [{"parts": [{"text": prompt}]}]}
@@ -104,7 +101,7 @@ tab1, tab2 = st.tabs(["Client ➡ Supplier", "Supplier ➡ Client"])
 
 # --- TAB 1: CLIENT TO SUPPLIER ---
 with tab1:
-    st.markdown("Use this when the client asks for extra items/stops.")
+    st.markdown("Use this when the client asks for weird stuff (water, stops, decorations).")
     c_text = st.text_area("Client's Request:", height=150, key="c_input")
     
     if st.button("Draft Supplier Email", type="primary"):
@@ -119,15 +116,15 @@ with tab1:
 
 # --- TAB 2: SUPPLIER TO CLIENT ---
 with tab2:
-    st.markdown("Use this when the supplier mentions **restrictions, fines, or timing issues**.")
-    s_text = st.text_area("Supplier's Explanation:", height=150, key="s_input", 
-                           placeholder="Example: 'No parking here. Police will fine me. Must be quick.'")
+    st.markdown("Use this when the supplier gives an answer (price, refusal, etc.).")
+    s_text = st.text_area("Supplier's Rough Reply:", height=150, key="s_input", 
+                           placeholder="Example: 'No water. Driver busy. Extra stop 50 eur.'")
     
     if st.button("Draft Client Email", type="primary"):
         if not api_key: st.error("Add API Key in sidebar")
         elif not s_text: st.warning("Paste text first")
         else:
-            with st.spinner("Formulating Logistics Solution..."):
+            with st.spinner("Drafting for Client (Using 'Planning Team' persona)..."):
                 status, res = generate_translation(api_key, s_text, "supplier_to_client")
                 if status == "SUCCESS":
                     st.text_area("Copy for Client:", value=res, height=250)
