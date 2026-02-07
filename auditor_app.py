@@ -37,7 +37,7 @@ def audit_email(api_key, text):
     current_date_str = datetime.now().strftime('%A, %d.%m.%Y')
     current_year = datetime.now().year
     
-    # --- PROMPT WITH SMART CONTEXT & CONCISE REPLY ---
+    # --- PROMPT WITH FRIENDLY CLOSING ---
     prompt = f"""
     You are a professional logistics auditor. Analyze this inquiry.
     Today's Date: {current_date_str}.
@@ -86,14 +86,12 @@ def audit_email(api_key, text):
     ***SEPARATOR***
 
     PART 2: "✉️ Draft Reply"
-    - Tone: Professional, polite, but VERY CONCISE.
-    - Rule: Do not write long paragraphs. 
+    - Tone: Professional, polite, concise.
     - Intro: "Dear Client,\n\nThank you for your inquiry."
     - Body: "To provide an accurate quote, could you please clarify:"
-    - List: Bullet points ONLY for the :red[❌] items (and :red[❌] Time).
-    - EXCEPTION: Do NOT ask for "Passengers" if Audit is :orange[⚠️ Estimated].
-    - EXCEPTION: Do NOT ask for "Luggage" if Context is Dinner/Wedding/School.
-    - Closing: "Best regards,"
+    - List: Bullet points ONLY for the :red[❌] items.
+    - Closing: "We look forward to hearing from you." 
+    - Sign-off: "Best regards,"
 
     --- EMAIL TO AUDIT ---
     {text}
@@ -130,7 +128,7 @@ if audit_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["audit_input"]: st.warning("Please paste an email.")
     else:
-        with st.spinner("Analyzing Logistics & Context..."):
+        with st.spinner("Auditing..."):
             status, result = audit_email(api_key, st.session_state["audit_input"])
             
             if status == "SUCCESS":
