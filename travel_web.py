@@ -37,44 +37,43 @@ def call_google_ai(api_key, text):
     
     current_year = datetime.now().year
     
-    # --- PROMPT WITH CLEAN CITY HEADERS ---
+    # --- PROMPT WITH TBC TIME & ASTERISK EXTRAS ---
     prompt = f"""
     Task: Convert travel text into a vertical logistics manifest.
-    Year: {current_year}. 
+    Current Year: {current_year}. 
 
-    --- CRITICAL FORMATTING RULES ---
-    1. SYMBOLS: Use ONLY hyphens (-) for lists. Do NOT use * or •.
+    --- CRITICAL RULES ---
+    1. HEADER FORMAT: [DD.MM.YYYY], [Pax] pax, [CITY/TOWN NAME ONLY]
+       - If year is missing in text, use {current_year}.
+       - Do NOT invent addresses.
 
-    2. HEADER FORMAT (City Only): 
-       - Format: [DD.MM.YYYY], [Pax] pax, [CITY/TOWN NAME ONLY]
-       - Do NOT put the specific hotel or station name in the header.
-       - BAD: 06.04.2026, 14 pax, Lille Europe Train Station
-       - GOOD: 06.04.2026, 14 pax, Lille
-       - GOOD: 11.04.2026, 14 pax, Paris (or Marne La Vallee)
+    2. TRANSFER LINES (Use Hyphens -):
+       - Format: "- Pick-up [Time] [Location]"
+       - Format: "- Drop-off [Location]"
+       
+    3. TIME RULES (Strict):
+       - If a specific time is given, convert to 24h (e.g., 15:30).
+       - If NO time is given, strictly write "TBC". 
+       - NEVER invent a time like "09:00" if it is not in the text.
 
-    3. SEPARATION: 
-       - Insert a DOUBLE EMPTY LINE between every transfer block.
-       - This is critical to prevent text squashing.
+    4. EXTRAS & LUGGAGE (Use Asterisks *):
+       - Place all additional info (Luggage, Flight numbers, Guides, Notes) at the bottom of the specific transfer block.
+       - Prefix these lines with an asterisk (*).
+       - Example: "* Large luggage included"
 
-    4. TIME (24H): 
-       - Convert 3.30pm -> 15:30. 12pm -> 12:00.
+    5. SEPARATION: Insert a DOUBLE EMPTY LINE between every transfer block.
 
-    5. LINES: 
-       - Pick-up and Drop-off must be on separate lines starting with a hyphen -.
-       - Include the Specific Name here (e.g. "- Pick-up 15:30 Lille Europe...").
-
-    6. NOTES & LUGGAGE: 
-       - Keep client notes (e.g. "arriving on Eurostar") in brackets on the same line.
-       - Extract luggage/extras to the bottom of the block with a hyphen -.
-
-    --- EXPECTED OUTPUT ---
+    --- EXPECTED OUTPUT EXAMPLE ---
     06.04.2026, 14 pax, Lille
-    - Pick-up 15:30 Lille Europe train station (arriving on the Eurostar)
-    - Drop-off Holiday Inn Express Marne La Vallee
+    - Pick-up 15:30 Lille Europe train station
+    - Drop-off Holiday Inn Marne La Vallee
+    * Arriving on Eurostar
+    * 14 suitcases + 14 carry-ons
 
-    11.04.2026, 14 pax, Paris
-    - Pick-up 12:00 Newport Bay Disney Hotel
-    - Drop-off Lille Europe train station
+    10.05.2026, 5 pax, Riga
+    - Pick-up TBC Radisson Blu Latvija
+    - Drop-off Riga Airport
+    * Flight BT102
 
     --- INPUT ---
     {text}
@@ -107,7 +106,7 @@ if process_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Formatting (City Headers + 24h)..."):
+        with st.spinner("Formatting (TBC Times & * Extras)..."):
             status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
                 st.success("Formatted!")
