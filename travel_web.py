@@ -37,32 +37,26 @@ def call_google_ai(api_key, text):
     
     current_year = datetime.now().year
     
-    # --- PROMPT: CLEAN TIMELINE FIRST ---
+    # --- PROMPT: CLEAN DATES + GLOBAL SUMMARY ---
     prompt = f"""
-    Task: Convert travel text into a detailed LOGISTICS ITINERARY.
+    Task: Convert travel text into a LOGISTICS ITINERARY with a CONSOLIDATED SUMMARY.
     Current Year: {current_year} (Use this if year is missing).
 
-    --- CRITICAL STRUCTURE RULES ---
-    For every date block, you must follow this EXACT order:
-    
+    --- PART 1: DATE BLOCKS (Keep these CLEAN) ---
+    For every date mentioned, generate ONLY:
     1. HEADER: [DD.MM.YYYY], [Pax] pax, [Start City] – [Dest City] ([Return/One-way])
-    
-    2. TIMELINE (Must come immediately after Header):
+    2. TIMELINE: 
        - Format: -[HH:MM]: [Action] – [Location]
-       - List specific times and movements. 
-       - If no specific time is found, just use "-" without a time.
+       - If no specific time, use "-" without a time.
     
-    3. FOOTER EXTRAS (Must come LAST, at the bottom of the block):
-       - *Vehicle: [Only mention if specific, e.g. "Two buses" or "For 40 pax"].
-       - *Notes: [Any constraints, flight numbers, or specific instructions].
-       - *Price Request: [If applicable].
+    CRITICAL RULE FOR DATES: Do NOT put *Vehicle, *Notes, or *Price inside the date blocks. Keep them strictly for movements.
 
-    --- FORMATTING PROHIBITIONS ---
-    - DO NOT put "*Vehicle" lines between the Header and the Timeline.
-    - DO NOT split the timeline with notes. Keep notes at the bottom.
-
-    --- DATE LOGIC ---
-    - Detect natural dates (e.g., "August 4") and convert to DD.MM.YYYY.
+    --- PART 2: TRIP SUMMARY (At the very bottom, ONCE) ---
+    After all dates are listed, add a separator "--- TRIP DETAILS ---" and list:
+    
+    *Vehicles: [Summarize total vehicle needs for the whole trip. E.g., "1x Bus (40 pax) for Team 2, 1x Bus (35 pax) for Team 1"].
+    *Notes: [Consolidate ALL warnings, flight info, TBCs, and team split details here].
+    *Price Request: [Summarize the costing request].
 
     --- INPUT ---
     {text}
@@ -95,7 +89,7 @@ if process_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Formatting (Timeline First)..."):
+        with st.spinner("Formatting (Global Summary)..."):
             status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
                 st.success("Formatted!")
