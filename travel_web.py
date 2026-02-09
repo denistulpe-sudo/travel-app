@@ -37,43 +37,34 @@ def call_google_ai(api_key, text):
     
     current_year = datetime.now().year
     
-    # --- PROMPT WITH TBC TIME & ASTERISK EXTRAS ---
+    # --- PROMPT: SMART DATE PARSING ---
     prompt = f"""
-    Task: Convert travel text into a vertical logistics manifest.
-    Current Year: {current_year}. 
+    Task: Convert travel text into a detailed LOGISTICS ITINERARY.
+    Current Year: {current_year} (Use this if year is missing).
 
     --- CRITICAL RULES ---
-    1. HEADER FORMAT: [DD.MM.YYYY], [Pax] pax, [CITY/TOWN NAME ONLY]
-       - If year is missing in text, use {current_year}.
-       - Do NOT invent addresses.
+    1. DATE CONVERSION (The most important rule):
+       - Detect dates written in ANY format (e.g., "21st February", "Feb 21", "23th March", "next Monday").
+       - Convert them STRICTLY to [DD.MM.YYYY] format.
+       - Example: "21st Feb" -> "21.02.{current_year}"
+       - Example: "Monday 23th March" -> "23.03.{current_year}"
 
-    2. TRANSFER LINES (Use Hyphens -):
-       - Format: "- Pick-up [Time] [Location]"
-       - Format: "- Drop-off [Location]"
+    2. HEADER FORMAT: 
+       - [DD.MM.YYYY], [Pax] pax, [Start City] – [Dest City] ([Return/One-way])
        
-    3. TIME RULES (Strict):
-       - If a specific time is given, convert to 24h (e.g., 15:30).
-       - If NO time is given, strictly write "TBC". 
-       - NEVER invent a time like "09:00" if it is not in the text.
-
-    4. EXTRAS & LUGGAGE (Use Asterisks *):
-       - Place all additional info (Luggage, Flight numbers, Guides, Notes) at the bottom of the specific transfer block.
-       - Prefix these lines with an asterisk (*).
-       - Example: "* Large luggage included"
-
-    5. SEPARATION: Insert a DOUBLE EMPTY LINE between every transfer block.
-
-    --- EXPECTED OUTPUT EXAMPLE ---
-    06.04.2026, 14 pax, Lille
-    - Pick-up 15:30 Lille Europe train station
-    - Drop-off Holiday Inn Marne La Vallee
-    * Arriving on Eurostar
-    * 14 suitcases + 14 carry-ons
-
-    10.05.2026, 5 pax, Riga
-    - Pick-up TBC Radisson Blu Latvija
-    - Drop-off Riga Airport
-    * Flight BT102
+    3. TIMELINE:
+       - List ONLY specific actions and times found in the text.
+       - Format: -[HH:MM]: [Action] – [Location]
+       - If a timeframe is given (e.g. 09:00-19:00), list the start and end as separate actions.
+    
+    4. NO GUESSING:
+       - Do NOT guess vehicle type. Write: "*Vehicle: For [Pax] pax".
+       - Do NOT add adjectives unless in text.
+       
+    5. EXTRAS (Asterisks *):
+       - *Storage: [Copy specific text regarding luggage/walkers].
+       - *Price Request: [Copy specific text regarding cost].
+       - *Notes: [Any other constraints].
 
     --- INPUT ---
     {text}
@@ -106,11 +97,11 @@ if process_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Formatting (TBC Times & * Extras)..."):
+        with st.spinner("Formatting Itinerary..."):
             status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
                 st.success("Formatted!")
-                st.code(result, language=None)
+                st.text_area("Result:", value=result, height=400)
             else:
                 st.error("Failed.")
                 st.code(result)
