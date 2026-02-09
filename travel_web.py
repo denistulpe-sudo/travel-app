@@ -37,45 +37,54 @@ def call_google_ai(api_key, text):
     
     current_year = datetime.now().year
     
-    # --- PROMPT WITH TBC TIME & ASTERISK EXTRAS ---
+    # --- PROMPT: STRICT MANIFEST FORMATTER ---
     prompt = f"""
-    Task: Convert travel text into a vertical logistics manifest.
+    You are a strict Logistics Data Extractor. 
+    Task: Convert the input text into a vertical logistics manifest.
     Current Year: {current_year}. 
 
-    --- CRITICAL RULES ---
-    1. HEADER FORMAT: [DD.MM.YYYY], [Pax] pax, [CITY/TOWN NAME ONLY]
-       - If year is missing in text, use {current_year}.
-       - Do NOT invent addresses.
+    --- CRITICAL RULES (NO HALLUCINATIONS) ---
+    1. DATES: 
+       - Extract dates strictly. If year is missing, assume {current_year}.
+       - Format: [DD.MM.YYYY]
+    
+    2. TIMES (STRICT):
+       - If a specific time is written (e.g., "14:00", "2pm"), write it.
+       - If NO time is written, you MUST write "TBC". 
+       - If vague text is used (e.g., "Morning"), write "TBC (Morning)".
+       - NEVER invent a time like "09:00" or "12:00" if it is not explicitly in the text.
 
-    2. TRANSFER LINES (Use Hyphens -):
+    3. HEADER FORMAT: 
+       - [DD.MM.YYYY], [Pax] pax, [Main City/Location]
+
+    4. ACTION LINES (Use Hyphens -):
        - Format: "- Pick-up [Time] [Location]"
        - Format: "- Drop-off [Location]"
-       
-    3. TIME RULES (Strict):
-       - If a specific time is given, convert to 24h (e.g., 15:30).
-       - If NO time is given, strictly write "TBC". 
-       - NEVER invent a time like "09:00" if it is not in the text.
+       - Format: "- Stop [Time] [Location]" (For lunches/visits)
+       - Do not omit any stops mentioned in the text.
 
-    4. EXTRAS & LUGGAGE (Use Asterisks *):
-       - Place all additional info (Luggage, Flight numbers, Guides, Notes) at the bottom of the specific transfer block.
-       - Prefix these lines with an asterisk (*).
-       - Example: "* Large luggage included"
+    5. EXTRAS (Use Asterisks *):
+       - Capture ALL additional details found in the text for that specific day.
+       - Include: Flight numbers, Luggage counts, Contacts, Special requests (Walkers, Child seats), Vehicle types requested.
+       - Format: "* [Detail]"
 
-    5. SEPARATION: Insert a DOUBLE EMPTY LINE between every transfer block.
+    6. SEPARATION: 
+       - Insert a DOUBLE EMPTY LINE between every date block.
 
     --- EXPECTED OUTPUT EXAMPLE ---
     06.04.2026, 14 pax, Lille
     - Pick-up 15:30 Lille Europe train station
     - Drop-off Holiday Inn Marne La Vallee
-    * Arriving on Eurostar
+    * Arriving on Eurostar ES9010
     * 14 suitcases + 14 carry-ons
 
     10.05.2026, 5 pax, Riga
     - Pick-up TBC Radisson Blu Latvija
     - Drop-off Riga Airport
-    * Flight BT102
+    * Flight BT102 departing at 18:00
+    * Client requests water on board
 
-    --- INPUT ---
+    --- INPUT TEXT ---
     {text}
     """
 
@@ -106,7 +115,7 @@ if process_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Formatting (TBC Times & * Extras)..."):
+        with st.spinner("Formatting (Strict Logic)..."):
             status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
                 st.success("Formatted!")
