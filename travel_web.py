@@ -37,34 +37,32 @@ def call_google_ai(api_key, text):
     
     current_year = datetime.now().year
     
-    # --- PROMPT: SMART DATE PARSING ---
+    # --- PROMPT: CLEAN TIMELINE FIRST ---
     prompt = f"""
     Task: Convert travel text into a detailed LOGISTICS ITINERARY.
     Current Year: {current_year} (Use this if year is missing).
 
-    --- CRITICAL RULES ---
-    1. DATE CONVERSION (The most important rule):
-       - Detect dates written in ANY format (e.g., "21st February", "Feb 21", "23th March", "next Monday").
-       - Convert them STRICTLY to [DD.MM.YYYY] format.
-       - Example: "21st Feb" -> "21.02.{current_year}"
-       - Example: "Monday 23th March" -> "23.03.{current_year}"
-
-    2. HEADER FORMAT: 
-       - [DD.MM.YYYY], [Pax] pax, [Start City] – [Dest City] ([Return/One-way])
-       
-    3. TIMELINE:
-       - List ONLY specific actions and times found in the text.
-       - Format: -[HH:MM]: [Action] – [Location]
-       - If a timeframe is given (e.g. 09:00-19:00), list the start and end as separate actions.
+    --- CRITICAL STRUCTURE RULES ---
+    For every date block, you must follow this EXACT order:
     
-    4. NO GUESSING:
-       - Do NOT guess vehicle type. Write: "*Vehicle: For [Pax] pax".
-       - Do NOT add adjectives unless in text.
-       
-    5. EXTRAS (Asterisks *):
-       - *Storage: [Copy specific text regarding luggage/walkers].
-       - *Price Request: [Copy specific text regarding cost].
-       - *Notes: [Any other constraints].
+    1. HEADER: [DD.MM.YYYY], [Pax] pax, [Start City] – [Dest City] ([Return/One-way])
+    
+    2. TIMELINE (Must come immediately after Header):
+       - Format: -[HH:MM]: [Action] – [Location]
+       - List specific times and movements. 
+       - If no specific time is found, just use "-" without a time.
+    
+    3. FOOTER EXTRAS (Must come LAST, at the bottom of the block):
+       - *Vehicle: [Only mention if specific, e.g. "Two buses" or "For 40 pax"].
+       - *Notes: [Any constraints, flight numbers, or specific instructions].
+       - *Price Request: [If applicable].
+
+    --- FORMATTING PROHIBITIONS ---
+    - DO NOT put "*Vehicle" lines between the Header and the Timeline.
+    - DO NOT split the timeline with notes. Keep notes at the bottom.
+
+    --- DATE LOGIC ---
+    - Detect natural dates (e.g., "August 4") and convert to DD.MM.YYYY.
 
     --- INPUT ---
     {text}
@@ -97,7 +95,7 @@ if process_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Formatting Itinerary..."):
+        with st.spinner("Formatting (Timeline First)..."):
             status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
                 st.success("Formatted!")
