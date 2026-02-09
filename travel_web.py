@@ -37,26 +37,43 @@ def call_google_ai(api_key, text):
     
     current_year = datetime.now().year
     
-    # --- PROMPT: CLEAN DATES + GLOBAL SUMMARY ---
+    # --- PROMPT WITH TBC TIME & ASTERISK EXTRAS ---
     prompt = f"""
-    Task: Convert travel text into a LOGISTICS ITINERARY with a CONSOLIDATED SUMMARY.
-    Current Year: {current_year} (Use this if year is missing).
+    Task: Convert travel text into a vertical logistics manifest.
+    Current Year: {current_year}. 
 
-    --- PART 1: DATE BLOCKS (Keep these CLEAN) ---
-    For every date mentioned, generate ONLY:
-    1. HEADER: [DD.MM.YYYY], [Pax] pax, [Start City] – [Dest City] ([Return/One-way])
-    2. TIMELINE: 
-       - Format: -[HH:MM]: [Action] – [Location]
-       - If no specific time, use "-" without a time.
-    
-    CRITICAL RULE FOR DATES: Do NOT put *Vehicle, *Notes, or *Price inside the date blocks. Keep them strictly for movements.
+    --- CRITICAL RULES ---
+    1. HEADER FORMAT: [DD.MM.YYYY], [Pax] pax, [CITY/TOWN NAME ONLY]
+       - If year is missing in text, use {current_year}.
+       - Do NOT invent addresses.
 
-    --- PART 2: TRIP SUMMARY (At the very bottom, ONCE) ---
-    After all dates are listed, add a separator "--- TRIP DETAILS ---" and list:
-    
-    *Vehicles: [Summarize total vehicle needs for the whole trip. E.g., "1x Bus (40 pax) for Team 2, 1x Bus (35 pax) for Team 1"].
-    *Notes: [Consolidate ALL warnings, flight info, TBCs, and team split details here].
-    *Price Request: [Summarize the costing request].
+    2. TRANSFER LINES (Use Hyphens -):
+       - Format: "- Pick-up [Time] [Location]"
+       - Format: "- Drop-off [Location]"
+       
+    3. TIME RULES (Strict):
+       - If a specific time is given, convert to 24h (e.g., 15:30).
+       - If NO time is given, strictly write "TBC". 
+       - NEVER invent a time like "09:00" if it is not in the text.
+
+    4. EXTRAS & LUGGAGE (Use Asterisks *):
+       - Place all additional info (Luggage, Flight numbers, Guides, Notes) at the bottom of the specific transfer block.
+       - Prefix these lines with an asterisk (*).
+       - Example: "* Large luggage included"
+
+    5. SEPARATION: Insert a DOUBLE EMPTY LINE between every transfer block.
+
+    --- EXPECTED OUTPUT EXAMPLE ---
+    06.04.2026, 14 pax, Lille
+    - Pick-up 15:30 Lille Europe train station
+    - Drop-off Holiday Inn Marne La Vallee
+    * Arriving on Eurostar
+    * 14 suitcases + 14 carry-ons
+
+    10.05.2026, 5 pax, Riga
+    - Pick-up TBC Radisson Blu Latvija
+    - Drop-off Riga Airport
+    * Flight BT102
 
     --- INPUT ---
     {text}
@@ -89,11 +106,11 @@ if process_btn:
     if not api_key: st.error("Please enter your API Key!")
     elif not st.session_state["main_input"]: st.warning("Please paste text.")
     else:
-        with st.spinner("Formatting (Global Summary)..."):
+        with st.spinner("Formatting (TBC Times & * Extras)..."):
             status, result = call_google_ai(api_key, st.session_state["main_input"])
             if status == "SUCCESS":
                 st.success("Formatted!")
-                st.text_area("Result:", value=result, height=400)
+                st.code(result, language=None)
             else:
                 st.error("Failed.")
                 st.code(result)
